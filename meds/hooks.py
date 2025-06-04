@@ -242,3 +242,7 @@ app_license = "mit"
 # 	"Logging DocType Name": 30  # days to retain logs
 # }
 
+whitelisted_methods = [
+	"meds.api.ping"
+	"meds.api.send_metar_email"
+]

@@ -1,0 +1,64 @@
+/* App Layout */
+.app-container {
+  display: flex;
+  height: 100vh;
+  font-family: sans-serif;
+}
+
+/* Left Panel */
+.left-pane {
+  flex: 1;
+  padding: 2rem;
+  border-right: 1px solid #ccc;
+  overflow-y: auto;
+}
+
+.left-pane h2 {
+  margin-bottom: 1rem;
+}
+
+.left-pane form label {
+  font-weight: bold;
+}
+
+.left-pane input {
+  width: 100%;
+  padding: 0.5rem;
+  margin-top: 0.3rem;
+  margin-bottom: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+/* Right Panel */
+.right-pane {
+  flex: 1.2;
+  padding: 2rem;
+  background-color: #f9f9f9;
+  overflow-y: auto;
+}
+
+.preview-box {
+  background: #fff;
+  padding: 1rem;
+  border-radius: 6px;
+  min-height: 120px;
+  border: 1px solid #ddd;
+}
+
+.action-buttons {
+  margin-top: 2rem;
+}
+
+.action-buttons button {
+  margin-right: 1rem;
+  padding: 0.5rem 1rem;
+  border: none;
+  background-color: #e0e0e0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.action-buttons button:hover {
+  background-color: #d4d4d4;
+}
