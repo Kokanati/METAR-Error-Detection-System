@@ -9,7 +9,10 @@ app_license = "mit"
 # ------------------
 doc_events = {}
 
-
+# apps/meds/meds/hooks.py
+app_include_python = [
+	"meds.api"
+]
 
 # required_apps = []
 

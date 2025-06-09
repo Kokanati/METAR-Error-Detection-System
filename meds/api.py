@@ -2,13 +2,13 @@ import frappe
 from frappe.core.doctype.communication.email import make
 
 @frappe.whitelist(allow_guest=True)
-def send_metar_email(header, metar_list):
+def send_metar_email(header, metar_list, receipient_email="reggy.hingano@gmail.com"):
     """
     Send METAR report via email using Frappe's internal mail system.
     Called from the frontend with two parameters: header (string) and metar_list (string)
     """
     try:
-        recipients = ["reggy.hingano@gmail.com"]
+        recipients = [receipient_email]
         subject = "METAR Submission"
         message = f"<b>{header}</b><br><pre>{metar_list}</pre>"
 

@@ -95,7 +95,10 @@ const MetarActions = () => {
         if (!confirmSend) return;
 
         try {
-            const response = await fetch('http://localhost:8000/api/method/meds.api.send_metar_email', {
+            const baseUrl = window.location.origin;
+            const response = await fetch(`${baseUrl}/api/method/meds.api.send_metar_email`, {
+
+            //const response = await fetch('http://localhost:8000/api/method/meds.api.send_metar_email', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -103,7 +106,8 @@ const MetarActions = () => {
                 },
                 body: JSON.stringify({
                     header,
-                    metar_list: metarBody
+                    metar_list: metarBody,
+                    recipient_email: formData.recipientEmail
                 })
             });
 
