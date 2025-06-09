@@ -7,6 +7,9 @@ app_license = "mit"
 
 # Apps
 # ------------------
+doc_events = {}
+
+
 
 # required_apps = []
 
@@ -245,4 +248,5 @@ app_license = "mit"
 whitelisted_methods = [
 	"meds.api.ping"
 	"meds.api.send_metar_email"
+
 ]

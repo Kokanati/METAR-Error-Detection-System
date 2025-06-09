@@ -1,86 +1,168 @@
-import React, { useState } from "react";
-import "./App.css";
-import { saveMetarObservation } from "./utils/api";
+import React from 'react';
+import './App.css';
+
+import { useFormData } from './context/FormContext';
+import {
+  validateWindFields,
+  validateCloudVisibilityWeather,
+  validateTempDewQnhFields
+} from './utils/validateMetar';
+
+import WxHeaderForm from './components/WxHeaderForm';
+import WxWindVisibility from './components/WxWindVisibility';
+import WxCloudBlock from './components/WxCloudBlock';
+import WxTempPressureBlock from './components/WxTempPressureBlock';
+import WxRemarksBlock from './components/WxRemarksBlock';
+import MetarPreview from './components/MetarPreview';
+import MetarActions from './components/MetarActions';
+import UtcClock from './components/UtcClock';
 
 function App() {
-  const [form, setForm] = useState({
-    obs_type:"METAR",
-    station_id: "",
-    obs_time: "",
-    wind_speed: "",
-    wind_direction: "",
-    wind_gust: "",
-    visibility: "",
-    temperature: "",
-    dew_point: "",
-    qnh: "",
-  });
+  const {
+    formData,
+    appendMetar,
+    resetMetarBody,
+    setErrorFields
+  } = useFormData();
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const buildMetarString = () => {
+    const {
+      obsType,
+      station,
+      utcTime,
+      windDir,
+      windSpeed,
+      gust,
+      windV1,
+      windV2,
+      visibility,
+      showDirVis,
+      dirVisValue,
+      dirVisDir,
+      showPresentWeather,
+      presentWeather,
+      clouds = [],
+      temperature,
+      dewPoint,
+      pressure,
+      showRecentWeather,
+      recentWeather,
+      showRemarks,
+      remarks,
+      cavok,
+      showWindVar,
+    } = formData;
+
+    let wind = '';
+    if (windDir && windSpeed) {
+      wind = `${windDir}${windSpeed.padStart(2, '0')}`;
+      if (gust && Number(windSpeed) >= 15) wind += `G${gust}`;
+      wind += 'KT';
+    }
+    if (showWindVar && windV1 && windV2) wind += ` ${windV1}V${windV2}`;
+
+    let visClouds = '';
+    if (cavok) {
+      visClouds = 'CAVOK';
+    } else {
+      let vis = visibility || '';
+      if (showDirVis && dirVisValue && dirVisDir) vis += ` ${dirVisValue}${dirVisDir}`;
+      let cloudsStr = '';
+      if (clouds.length > 0) {
+        cloudsStr = clouds
+          .filter(cl => cl.amount && cl.height)
+          .map(cl => `${cl.amount}${cl.height}`)
+          .join(' ');
+      }
+      visClouds = [vis, showPresentWeather && presentWeather, cloudsStr].filter(Boolean).join(' ');
+    }
+
+    let tempDew = '';
+    if (temperature && dewPoint) {
+      tempDew = `${temperature}/${dewPoint}`;
+    }
+
+    let qnhStr = pressure ? `Q${pressure}` : '';
+
+    let remarksStr = '';
+    if (showRecentWeather && recentWeather) remarksStr += ` RE${recentWeather}`;
+    if (showRemarks && remarks) remarksStr += ` RMK ${remarks}`;
+
+    const metarParts = [
+      obsType,
+      station,
+      utcTime ? `${utcTime}Z` : '',
+      wind,
+      visClouds,
+      tempDew,
+      qnhStr,
+      remarksStr.trim(),
+    ].filter(Boolean);
+
+    if (metarParts.length > 0) {
+      metarParts[metarParts.length - 1] += '=';
+    }
+
+    return metarParts.join(' ');
   };
 
- const metarPreview = `METAR ${form.station_id || "XXXX"} ${form.obs_time || "000000Z"} ${form.wind_direction || "000"}${form.wind_speed || "00"}G${form.wind_gust || "00"}KT ${form.visibility || "9999"} ${form.temperature || "00"}/${form.dew_point || "00"} Q${form.qnh || "0000"}`;
+  const handleCheck = () => {
+    let allErrors = [];
+    console.log("FormData:", formData); // 🧪 Debug
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const res = await saveMetarObservation(form);
-      alert(`Observation saved as: ${res.name}`);
-    } catch (err) {
-      console.error(err);
-      alert("Failed to save METAR observation.");
+    const windErrors = validateWindFields(formData, setErrorFields);
+    const visibilityErrors = validateCloudVisibilityWeather(formData, setErrorFields);
+    const tempQnhErrors = validateTempDewQnhFields(formData, setErrorFields);
+
+    allErrors = [...windErrors, ...visibilityErrors, ...tempQnhErrors];
+
+    if (allErrors.length > 0) {
+      alert('⚠️ Some fields contain errors:\n\n' + allErrors.join('\n'));
+    } else {
+      alert('✅ No errors detected. Observation has been verified.');
+      setErrorFields([]); //Clear only if no errors
+
+      const metarString = buildMetarString();
+      console.log("Generated METAR:", metarString);
+      appendMetar(metarString);
+
+      // Reset fields except header (country, obsType, utcTime, cccc, ttaaii)
+      resetMetarBody();
     }
   };
 
-
   return (
     <div className="app-container">
-      {/* Left Panel */}
-      <div className="left-pane">
-        <h2>METAR Entry</h2>
-        <form onSubmit={handleSubmit}>
-          <label>Station ID:</label>
-          <input type="text" name="station_id" value={form.station_id} onChange={handleChange} />
+      <h1 className="form-title">METAR Error Detection System</h1>
 
-          <label>Observation Time (Z):</label>
-          <input type="text" name="obs_time" value={form.obs_time} onChange={handleChange} placeholder="270800Z" />
+      <WxHeaderForm />
 
-          <label>Wind Speed (kt):</label>
-          <input type="number" name="wind_speed" value={form.wind_speed} onChange={handleChange} />
+      <div className="two-pane">
+        <div className="left-pane">
+          <WxWindVisibility />
+          <WxCloudBlock />
+          <WxTempPressureBlock />
+          <WxRemarksBlock />
 
-          <label>Wind Direction (°):</label>
-	  <input type="number" name="wind_direction" value={form.wind_direction} onChange={handleChange} />
-
-	  <label>Wind Gust (kt):</label>
-	  <input type="number" name="wind_gust" value={form.wind_gust} onChange={handleChange} />
-
-	  <label>Visibility (m):</label>
-	  <input type="text" name="visibility" value={form.visibility} onChange={handleChange} />
-
-	  <label>Temperature (°C):</label>
- 	  <input type="number" name="temperature" value={form.temperature} onChange={handleChange} />
-
-	  <label>Dew Point (°C):</label>
-	  <input type="number" name="dew_point" value={form.dew_point} onChange={handleChange} />
-
-	  <label>Pressure (QNH):</label>
-	  <input type="text" name="qnh" value={form.qnh} onChange={handleChange} />
-
-	  <button type="submit">Check</button>
-        </form>
-      </div>
-
-      {/* Right Panel */}
-      <div className="right-pane">
-        <h2>Observation Preview</h2>
-        <div className="preview-box">
-          <pre>{metarPreview}</pre>
+          <div className="button-group">
+            <button className="check-button" onClick={handleCheck}>Check</button>
+            <button
+              className="refresh-button"
+              onClick={() => {
+                const confirmRefresh = window.confirm("This will reset all values. Do you want to continue?");
+                if (confirmRefresh) {
+                  window.location.reload();
+                }
+              }}
+            >
+              Refresh
+            </button>
+          </div>
         </div>
-        <div className="action-buttons">
-          <button>Copy</button>
-          <button>Archive</button>
-          <button>Email</button>
+
+        <div className="right-pane">
+          <MetarPreview />
+          <MetarActions />
         </div>
       </div>
     </div>

@@ -1,0 +1,232 @@
+// src/utils/validateMetar.js
+
+export function validateUtcTime(input) {
+    if (!/^\d{6}$/.test(input)) {
+        return { valid: false, reason: 'Invalid format (use DDHHMM)' };
+    }
+
+    const now = new Date();
+    const dd = parseInt(input.slice(0, 2), 10);
+    const hh = parseInt(input.slice(2, 4), 10);
+    const mm = parseInt(input.slice(4, 6), 10);
+
+    if (mm % 5 !== 0) {
+        return { valid: false, reason: 'METAR time must be to the nearest 5 minutes' };
+    }
+
+    const candidateTime = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), dd, hh, mm));
+    const diffMinutes = Math.round((candidateTime - now) / 60000);
+
+    if (diffMinutes > 15) {
+        return { valid: false, reason: 'Time is too far in the future (max 15 min ahead)' };
+    }
+
+    if (diffMinutes < 0) {
+        return {
+            valid: false,
+            reason: 'Past time',
+            prompt: 'The time entered is in the past. Are you doing a correction to a previous METAR?'
+        };
+    }
+
+    return { valid: true };
+}
+
+export function validateWindFields(formData, setErrorFields) {
+    const errors = [];
+    const errorFields = [];
+
+    const {
+        windDir,
+        windSpeed,
+        gust,
+        windV1,
+        windV2
+    } = formData;
+
+    const windSpeedNum = Number(windSpeed);
+    const gustNum = Number(gust);
+
+    if (!windDir) {
+        errors.push('Wind direction is required.');
+        errorFields.push('wind');
+    }
+    if (!windSpeed) {
+        errors.push('Wind speed is required.');
+        errorFields.push('wind');
+    }
+
+    if ((windDir === '000' && windSpeed !== '0') || (windSpeed === '0' && windDir !== '000')) {
+        errors.push('If wind direction is "000", wind speed must be 0 — and vice versa.');
+        errorFields.push('wind');
+    }
+
+    if (windDir === 'VRB' && windSpeedNum > 6) {
+        errors.push('Variable wind (VRB) should only be used for wind speed ≤ 6 KT.');
+        errorFields.push('wind');
+    }
+
+    if (windSpeedNum >= 15) {
+        if (!gust) {
+            errors.push('Wind gust required when wind speed ≥ 15 KT.');
+            errorFields.push('wind');
+        } else if (gustNum < windSpeedNum + 10) {
+            errors.push('Wind gust must be ≥ wind speed + 10 KT.');
+            errorFields.push('wind');
+        }
+    }
+
+    if (windDir && windDir !== 'VRB' && windV1 && windV2) {
+        const v1 = parseInt(windV1, 10);
+        const v2 = parseInt(windV2, 10);
+        if (!isNaN(v1) && !isNaN(v2)) {
+            const diff = v2 > v1 ? v2 - v1 : (360 + v2 - v1);
+            if (diff < 60) {
+                errors.push('Wind variation must differ by at least 60°.');
+                errorFields.push('wind');
+            }
+        }
+    }
+
+    if (windSpeedNum > 150) {
+        errors.push('Wind speed exceeds maximum operational limit (>150 KT).');
+        errorFields.push('wind');
+    }
+
+    setErrorFields(prev => [...new Set([...prev, ...errorFields])]);
+    return errors;
+}
+
+export function validateCloudVisibilityWeather(formData, setErrorFields) {
+    const errors = [];
+    const errorFields = [];
+
+    const {
+        visibility,
+        showDirVis,
+        dirVisValue,
+        dirVisDir,
+        showPresentWeather,
+        presentWeather,
+        clouds = []
+    } = formData;
+
+    if (!visibility) {
+        errors.push('Visibility is required.');
+        errorFields.push('visibility');
+    }
+
+    if (showPresentWeather && presentWeather) {
+        if (!/^[-+]?([A-Z]{2,6})$/.test(presentWeather)) {
+            errors.push('Present weather code must match standard METAR format (e.g., -RA, +TSRA, SHRA).');
+            errorFields.push('presentWeather');
+        }
+    }
+
+    if (!clouds.length || !clouds.some(cl => cl.amount && cl.height)) {
+        errors.push('At least one valid cloud layer is required.');
+        errorFields.push('clouds');
+    }
+
+    let prevHeight = 0;
+    clouds.forEach((layer, index) => {
+        const { amount, height } = layer;
+
+        if (!['FEW', 'SCT', 'BKN', 'OVC'].includes(amount)) {
+            errors.push(`Cloud layer ${index + 1}: Invalid amount code.`);
+            errorFields.push('clouds');
+        }
+
+        if (!/^\d{3}$/.test(height)) {
+            errors.push(`Cloud layer ${index + 1}: Height must be 3-digit number.`);
+            errorFields.push('clouds');
+        } else {
+            const h = parseInt(height);
+            if (h < prevHeight) {
+                errors.push(`Cloud layer ${index + 1}: Height must be in ascending order.`);
+                errorFields.push('clouds');
+            }
+            prevHeight = h;
+        }
+
+        if (amount === 'FEW' && index > 1) {
+            errors.push(`Cloud layer ${index + 1}: "FEW" should be used only in the first two layers.`);
+            errorFields.push('clouds');
+        }
+    });
+
+    setErrorFields(prev => [...new Set([...prev, ...errorFields])]);
+    return errors;
+}
+
+export function validateTempDewQnhFields(formData, setErrorFields) {
+    const errors = [];
+    const errorFields = [];
+
+    const { temperature, dewPoint, pressure } = formData;
+
+    if (!temperature) {
+        errors.push('Temperature is required.');
+        errorFields.push('tempDew');
+    } else if (!/^\d+$/.test(temperature) || Number(temperature) < 0) {
+        errors.push('Temperature must be a non-negative integer.');
+        errorFields.push('tempDew');
+    }
+
+    if (!dewPoint) {
+        errors.push('Dew point is required.');
+        errorFields.push('tempDew');
+    } else if (!/^\d+$/.test(dewPoint) || Number(dewPoint) < 0) {
+        errors.push('Dew point must be a non-negative integer.');
+        errorFields.push('tempDew');
+    }
+
+    if (temperature && dewPoint && Number(dewPoint) > Number(temperature)) {
+        errors.push('Dew point cannot exceed temperature.');
+        errorFields.push('tempDew');
+    }
+
+    if (!pressure) {
+        errors.push('QNH (pressure) is required.');
+        errorFields.push('qnh');
+    } else if (!/^\d{3,4}$/.test(pressure) || Number(pressure) < 800) {
+        errors.push('QNH must be a 3–4 digit number (≥ 800).');
+        errorFields.push('qnh');
+    }
+
+    setErrorFields(prev => [...new Set([...prev, ...errorFields])]);
+    return errors;
+}
+
+export function validateMandatoryFields(formData, metarList, setErrorFields) {
+    const errors = [];
+    const errorFields = [];
+
+    const { obsType, station } = formData;
+
+    if (!formData.country) {
+        errors.push('Country is required.');
+        errorFields.push('country');
+    }
+
+    if (!obsType) {
+        errors.push('Observation type is required.');
+        errorFields.push('obsType');
+    }
+
+    if (!station) {
+        errors.push('Station is required.');
+        errorFields.push('station');
+    } else if (metarList.some(metar => metar.includes(station))) {
+        errors.push('Station already exists in the METAR list.');
+        errorFields.push('station');
+    }
+
+    if (!formData.utcTime) {
+        errors.push('UTC Time is required.');
+        errorFields.push('utcTime');
+    }
+
+    setErrorFields(prev => [...new Set([...prev, ...errorFields])]);
+    return errors;
+}

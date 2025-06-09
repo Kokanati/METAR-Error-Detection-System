@@ -1,64 +1,409 @@
-/* App Layout */
+/* App layout */
 .app-container {
-  display: flex;
-  height: 100vh;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 1rem;
   font-family: sans-serif;
+  background-color: #f8f9fa;
+  font-size: 12px;
 }
 
-/* Left Panel */
-.left-pane {
-  flex: 1;
-  padding: 2rem;
-  border-right: 1px solid #ccc;
-  overflow-y: auto;
-}
-
-.left-pane h2 {
-  margin-bottom: 1rem;
-}
-
-.left-pane form label {
+/* Title */
+.form-title {
+  font-size: 1.5rem;
   font-weight: bold;
+  margin-bottom: 1rem;
+  text-align: center;
 }
 
-.left-pane input {
-  width: 100%;
-  padding: 0.5rem;
-  margin-top: 0.3rem;
+/* General Section Wrapper */
+.section {
+  border: 1px solid #ddd;
+  padding: 1rem;
+  border-radius: 8px;
+  background-color: white;
+  margin-bottom: 0.5rem;
+  /*gaps bottom of section*/
+  margin-top: 0.5rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+/* Section Title */
+.section-title {
+  font-size: 14px;
+  font-weight: 600;
   margin-bottom: 1rem;
+}
+
+/* Field group for label + input */
+.field-group {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.2rem;
+}
+
+/* Input Field */
+.form-input {
+  padding: 0.4rem 0.6rem;
+  font-size: 12px;
   border: 1px solid #ccc;
   border-radius: 4px;
+  /*width: 100%;*/
+  width: 6ch;
+  background-color: #ffffff;
+  color: #000000;
+  box-sizing: border-box;
 }
 
-/* Right Panel */
-.right-pane {
-  flex: 1.2;
-  padding: 2rem;
-  background-color: #f9f9f9;
-  overflow-y: auto;
+/* Input Field */
+.email-input {
+  padding: 0.4rem 0.6rem;
+  font-size: 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  width: 100%;
+  background-color: #ffffff;
+  color: #000000;
+  box-sizing: border-box;
 }
 
-.preview-box {
-  background: #fff;
-  padding: 1rem;
-  border-radius: 6px;
-  min-height: 120px;
-  border: 1px solid #ddd;
+/* Input Field */
+.form-input_mini {
+  padding: 0.4rem 0.6rem;
+  font-size: 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  /*width: 100%;*/
+  width: 7ch;
+  background-color: #ffffff;
+  color: #000000;
+  box-sizing: border-box;
 }
 
-.action-buttons {
-  margin-top: 2rem;
+/* Input Field for Remarks*/
+.form-smallinput {
+  padding: 0.4rem 0.6rem;
+  font-size: 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  width: 100%;
+  /*width: 6ch;*/
+  background-color: #ffffff;
+  color: #000000;
+  box-sizing: border-box;
 }
 
-.action-buttons button {
-  margin-right: 1rem;
-  padding: 0.5rem 1rem;
+/* Ensure select dropdowns look consistent */
+select.form-input {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-color: #ffffff;
+  color: #000000;
+}
+
+/* Small grouped fields (e.g. V1 V2, Gust, etc.) */
+.field-subgroup {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+
+/* Link-style toggle buttons */
+.button-toggle {
+  background: none;
   border: none;
-  background-color: #e0e0e0;
+  color: #007bff;
+  text-decoration: underline;
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 0;
+}
+
+/* Validation Error Border */
+.error {
+  border-color: red;
+}
+
+/* Optional: style checkboxes, not required yet */
+input[type='checkbox'] {
+  transform: scale(1.1);
+  margin-right: 0.4rem;
+}
+
+.two-pane {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+/* Left pane: forms */
+.left-pane {
+  flex: 4;
+  margin-top: 0rem;
+
+}
+
+/* Right pane: preview, validated METAR */
+.right-pane {
+  flex: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 0rem;
+}
+
+.button-group {
+  display: flex;
+  gap: 2rem;
+  margin-top: 0rem;
+}
+
+.check-button {
+  background-color: #28a745;
+  color: white;
+  padding: 1rem 1rem;
+  font-weight: bold;
+  border: none;
   border-radius: 4px;
   cursor: pointer;
 }
 
-.action-buttons button:hover {
-  background-color: #d4d4d4;
+.check-button:hover {
+  transform: scale(1.2);
+  color: #0f0;
+  /* neon-green on hover */
+}
+
+.send-button {
+  background-color: #28a745;
+  color: white;
+  padding: 1rem 0.7rem;
+  font-weight: bold;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.send-button:hover {
+  transform: scale(1.2);
+  color: #0f0;
+  /* neon-green on hover */
+}
+
+.refresh-button {
+  background-color: #6c757d;
+  color: white;
+  padding: 0.5rem 1rem;
+  font-weight: bold;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.refresh-button:hover {
+  transform: scale(1.2);
+  color: #0f0;
+  /* neon-green on hover */
+}
+
+.preview-box {
+  padding: 1rem;
+  border: 1px solid #ccc;
+  font-family: monospace;
+  min-height: 1rem;
+  background-color: #f4f4f4;
+}
+
+.action-box {
+  padding: 1rem;
+  border: 1px solid #ccc;
+  font-family: monospace;
+  min-height: 6rem;
+  background-color: #f4f4f4;
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  align-items: center;
+}
+
+.gray-button {
+  background-color: #6c757d;
+  color: white;
+  padding: 0.4rem 0.8rem;
+  /*font-size: 0.9rem;*/
+  font-size: 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.gray-button:hover {
+  transform: scale(1.2);
+  color: #0f0;
+  /* neon-green on hover */
+}
+
+.danger-button {
+  background-color: #dc3545;
+  color: white;
+  padding: 0.4rem 0.8rem;
+  /*font-size: 0.9rem;*/
+  font-size: 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.danger-button:hover {
+  transform: scale(1.2);
+  color: #0f0;
+  /* neon-green on hover */
+}
+
+.utc-clock {
+  font-size: 1.1rem;
+  font-weight: bold;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.field-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 6ch;
+}
+
+.form-input {
+  font-size: 12px;
+  width: 10ch;
+}
+
+.form-input.wide {
+  width: 15ch;
+}
+
+/* Add to App.css or your main stylesheet */
+.metar-error {
+  color: #fff;
+  background: #d32f2f;
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+.metar-error-msg {
+  color: #d32f2f;
+  margin-top: 8px;
+  font-weight: bold;
+}
+
+.utc-clock-box {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: #222;
+  color: #0f0;
+  font-family: 'Courier New', monospace;
+  font-size: 1rem;
+  border-radius: 8px;
+  margin: 1rem 0;
+  box-shadow: 0 0 10px #0f03;
+  width: fit-content;
+}
+
+.utc-clock-box:hover {
+  transform: scale(1.2);
+  color: #007bff;
+  /* Blue on hover */
+}
+
+.clock-icon {
+  margin-right: 0.75rem;
+  font-size: 1.25rem;
+}
+
+.clock-icon:hover {
+  transform: scale(1.2);
+  color: #007bff;
+  /* Blue on hover */
+}
+
+.clock-time {
+  white-space: nowrap;
+}
+
+.highlight-error {
+  color: red;
+  font-weight: bold;
+  text-decoration: underline;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-box {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  width: 400px;
+  max-width: 90%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+
+.modal-box a {
+  color: #007bff;
+  text-decoration: underline;
+}
+
+.icon-button {
+  background: none;
+  border: none;
+  font-size: 2.5rem;
+  /* Bigger icon */
+  cursor: pointer;
+  padding: 0.3rem 0.5rem;
+  color: #444;
+  transition: transform 0.2s, color 0.2s;
+}
+
+.icon-button:hover {
+  transform: scale(1.2);
+  color: #007bff;
+  /* Blue on hover */
+}
+
+.icon-button:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.5);
+  border-radius: 4px;
 }

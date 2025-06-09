@@ -1,0 +1,98 @@
+import React, { useState, useEffect } from 'react';
+import '../App.css';
+import { useFormData } from '../context/FormContext';
+
+const WxCloudBlock = () => {
+    const { formData, updateClouds } = useFormData();
+    const [cloudLayers, setCloudLayers] = useState([{ amount: '', height: '' }]);
+    const [errors, setErrors] = useState([]);
+
+    // Sync cloud layers to context
+    useEffect(() => {
+        updateClouds(cloudLayers);
+    }, [cloudLayers]);
+
+    const handleChange = (index, field, value) => {
+        const updated = [...cloudLayers];
+        updated[index][field] = value;
+        setCloudLayers(updated);
+    };
+
+    const handleAddLayer = () => {
+        if (cloudLayers.length >= 4) return;
+        setCloudLayers([...cloudLayers, { amount: '', height: '' }]);
+    };
+
+    const handleRemoveLayer = (index) => {
+        const updated = cloudLayers.filter((_, i) => i !== index);
+        setCloudLayers(updated);
+    };
+
+    const validateLayers = () => {
+        const newErrors = [];
+        cloudLayers.forEach((layer, idx) => {
+            const err = {};
+            if (!layer.amount) {
+                err.amount = 'Required';
+            } else if (layer.amount === 'FEW' && idx > 1) {
+                err.amount = '"FEW" only allowed in first 2 layers';
+            }
+
+            if (!/^\d{3}$/.test(layer.height)) {
+                err.height = 'Height must be 3 digits';
+            }
+
+            newErrors.push(err);
+        });
+        setErrors(newErrors);
+    };
+
+    return (
+        <div className="section">
+
+            {cloudLayers.map((layer, index) => (
+                <div key={index} className="field-subgroup" style={{ marginBottom: '0.75rem' }}>
+                    <label>Cloud Layer</label>
+                    <select
+                        value={layer.amount}
+                        onChange={(e) => handleChange(index, 'amount', e.target.value)}
+                        className={`form-input ${errors[index]?.amount ? 'error' : ''}`}
+                    >
+                        <option value="">Amount</option>
+                        <option value="FEW">FEW</option>
+                        <option value="SCT">SCT</option>
+                        <option value="BKN">BKN</option>
+                        <option value="OVC">OVC</option>
+                    </select>
+
+                    <input
+                        type="text"
+                        value={layer.height}
+                        onChange={(e) => handleChange(index, 'height', e.target.value)}
+                        placeholder="Height (e.g. 030)"
+                        className={`form-input ${errors[index]?.height ? 'error' : ''}`}
+                        maxLength={3}
+                    />
+
+                    {cloudLayers.length > 1 && (
+                        <button onClick={() => handleRemoveLayer(index)} className="button-toggle" style={{ marginLeft: '0.5rem' }}>
+                            Remove
+                        </button>
+                    )}
+                </div>
+            ))}
+
+            {cloudLayers.length < 4 && (
+                <button onClick={handleAddLayer} className="button-toggle">+ Add Cloud Layer</button>
+            )}
+
+            <div style={{ marginTop: '1rem' }}>
+                <button onClick={validateLayers} className="button-toggle">
+                    Validate Cloud Layers
+                </button>
+            </div>
+        </div>
+    );
+};
+
+export default WxCloudBlock;
