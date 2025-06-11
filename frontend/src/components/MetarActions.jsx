@@ -110,11 +110,12 @@ const MetarActions = () => {
 
             const result = await response.json();
 
-            if (response.ok && result.message) {
-                alert(` ${result.message}`);
+            if (response.ok && result.message && result.message.success) {
+                alert(`✅ ${result.message.message}`);
             } else {
-                alert(`Failed to send: ${result.message || 'Unknown error'}`);
-            }
+                alert(`❌ Failed to send: ${result.message?.message || 'Unknown error'}`);
+        }
+
         } catch (error) {
             console.error('Send METAR failed:', error);
             alert('Could not send METAR. Check server logs.', error);
