@@ -95,14 +95,11 @@ const MetarActions = () => {
         if (!confirmSend) return;
 
         try {
-            const baseUrl = window.location.origin;
-            const response = await fetch(`${baseUrl}/api/method/meds.api.send_metar_email`, {
-
-            //const response = await fetch('http://localhost:8000/api/method/meds.api.send_metar_email', {
+            const response = await fetch('/api/method/meds.api.send_metar_email', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-Frappe-CSRF-Token': window.csrf_token || '' // fallback for Vite if csrf_token is exposed globally
+                    'X-Frappe-CSRF-Token': window.csrf_token || '' // fallback if token is exposed globally
                 },
                 body: JSON.stringify({
                     header,

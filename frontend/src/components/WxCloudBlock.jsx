@@ -12,8 +12,15 @@ const WxCloudBlock = () => {
 
     // Sync cloudLayers with formData and reset from outside
     useEffect(() => {
-        setCloudLayers(formData.clouds.length > 0 ? formData.clouds : [{ amount: '', height: '' }]);
+        const cleared = formData.clouds.length === 0 ||
+            (formData.clouds.length === 1 &&
+                !formData.clouds[0].amount &&
+                !formData.clouds[0].height);
+
+        setCloudLayers(cleared ? [{ amount: '', height: '' }] : formData.clouds);
+        if (cleared) setHasTouchedClouds(false);  // 👈 this prevents validation from showing red
     }, [formData.clouds]);
+
 
     useEffect(() => {
         if (JSON.stringify(formData.clouds) !== JSON.stringify(cloudLayers)) {
