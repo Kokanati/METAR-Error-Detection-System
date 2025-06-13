@@ -33,6 +33,7 @@ const initialFormData = {
     presentWeather: '',
     showRecentWeather: false,
     showRemarks: false,
+    NoWxReport: false,
 };
 
 export const FormProvider = ({ children }) => {

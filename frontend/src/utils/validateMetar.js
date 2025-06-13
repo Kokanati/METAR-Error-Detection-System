@@ -1,14 +1,15 @@
 // src/utils/validateMetar.js
 
-export function validateUtcTime(input) {
-    if (!/^\d{6}$/.test(input)) {
+// ========== UTC TIME VALIDATION ==========
+export function validateUtcTime(utcTime) {
+    if (!/^\d{6}$/.test(utcTime)) {
         return { valid: false, reason: 'Invalid format (use DDHHMM)' };
     }
 
     const now = new Date();
-    const dd = parseInt(input.slice(0, 2), 10);
-    const hh = parseInt(input.slice(2, 4), 10);
-    const mm = parseInt(input.slice(4, 6), 10);
+    const dd = parseInt(utcTime.slice(0, 2), 10);
+    const hh = parseInt(utcTime.slice(2, 4), 10);
+    const mm = parseInt(utcTime.slice(4, 6), 10);
 
     if (mm % 5 !== 0) {
         return { valid: false, reason: 'METAR time must be to the nearest 5 minutes' };
@@ -32,201 +33,215 @@ export function validateUtcTime(input) {
     return { valid: true };
 }
 
+// ========== WIND VALIDATION ==========
 export function validateWindFields(formData, setErrorFields) {
     const errors = [];
     const errorFields = [];
 
-    const {
-        windDir,
-        windSpeed,
-        gust,
-        windV1,
-        windV2
-    } = formData;
+    const { windDir, windSpeed, gust, windV1, windV2 } = formData;
 
     const windSpeedNum = Number(windSpeed);
     const gustNum = Number(gust);
+
+    const isDirMissing = windDir === '///';
+    const isSpeedMissing = windSpeed === '//';
 
     if (!windDir) {
         errors.push('Wind direction is required.');
         errorFields.push('wind');
     }
-    if (!windSpeed) {
+    if (windSpeed === undefined || windSpeed === null || windSpeed.trim() === '') {
         errors.push('Wind speed is required.');
         errorFields.push('wind');
     }
-
-    if ((windDir === '000' && windSpeed !== '0') || (windSpeed === '0' && windDir !== '000')) {
-        errors.push('If wind direction is "000", wind speed must be 0 — and vice versa.');
+    if (windDir === '000' && windSpeedNum !== 0 && !isSpeedMissing) {
+        errors.push('Wind speed must be 0 when direction is 000.');
         errorFields.push('wind');
     }
-
-    if (windDir === 'VRB' && windSpeedNum > 6) {
-        errors.push('Variable wind (VRB) should only be used for wind speed ≤ 6 KT.');
+    if (windSpeedNum === 0 && windDir !== '000') {
+        errors.push('Wind direction must be 000 when speed is 0.');
         errorFields.push('wind');
     }
-
-    if (windSpeedNum >= 15) {
-        if (!gust) {
-            errors.push('Wind gust required when wind speed ≥ 15 KT.');
-            errorFields.push('wind');
-        } else if (gustNum < windSpeedNum + 10) {
-            errors.push('Wind gust must be ≥ wind speed + 10 KT.');
+    if (gust && (!/^\d+$/.test(gust) || gustNum < 0 || gustNum > 99)) {
+        errors.push('Gust must be a number between 0 and 99.');
+        errorFields.push('wind');
+    }
+    if (gust && windSpeed && gustNum <= windSpeedNum) {
+        errors.push('Gust must be greater than wind speed.');
+        errorFields.push('wind');
+    }
+    if (windV1 && windV2) {
+        const v1 = Number(windV1);
+        const v2 = Number(windV2);
+        if (isNaN(v1) || isNaN(v2) || v1 >= v2) {
+            errors.push('Wind variable range is invalid (start should be less than end).');
             errorFields.push('wind');
         }
     }
 
-    if (windDir && windDir !== 'VRB' && windV1 && windV2) {
-        const v1 = parseInt(windV1, 10);
-        const v2 = parseInt(windV2, 10);
-        if (!isNaN(v1) && !isNaN(v2)) {
-            const diff = v2 > v1 ? v2 - v1 : (360 + v2 - v1);
-            if (diff < 60) {
-                errors.push('Wind variation must differ by at least 60°.');
-                errorFields.push('wind');
-            }
-        }
-    }
-
-    if (windSpeedNum > 150) {
-        errors.push('Wind speed exceeds maximum operational limit (>150 KT).');
-        errorFields.push('wind');
-    }
-
-    setErrorFields(prev => [...new Set([...prev, ...errorFields])]);
+    if (setErrorFields) setErrorFields(errorFields);
     return errors;
 }
 
-export function validateCloudVisibilityWeather(formData, setErrorFields) {
+// ========== VISIBILITY VALIDATION ==========
+export function validateVisibilityFields(formData, setErrorFields) {
     const errors = [];
     const errorFields = [];
+    const { visibility, dirVisDir, dirVisValue, cavok } = formData;
 
-    const {
-        visibility,
-        showDirVis,
-        dirVisValue,
-        dirVisDir,
-        showPresentWeather,
-        presentWeather,
-        clouds = []
-    } = formData;
+    // If CAVOK, skip all visibility errors
+    if (cavok) {
+        if (setErrorFields) setErrorFields([]);
+        return [];
+    }
 
-    if (!visibility) {
+    if (!visibility || visibility.trim() === '') {
         errors.push('Visibility is required.');
+        errorFields.push('visibility');
+    } else if (!/^\d+$/.test(visibility) || Number(visibility) < 0 || Number(visibility) > 9999) {
+        errors.push('Visibility must be between 0000 and 9999 meters.');
         errorFields.push('visibility');
     }
 
-    if (showPresentWeather && presentWeather) {
-        if (!/^[-+]?([A-Z]{2,6})$/.test(presentWeather)) {
-            errors.push('Present weather code must match standard METAR format (e.g., -RA, +TSRA, SHRA).');
-            errorFields.push('presentWeather');
-        }
+    // Directional visibility
+    if ((dirVisDir && !dirVisValue) || (!dirVisDir && dirVisValue)) {
+        errors.push('Both directional visibility and its value must be filled.');
+        errorFields.push('directional-visibility');
+    } else if (dirVisDir && dirVisValue && (!/^\d+$/.test(dirVisValue) || Number(dirVisValue) < 0 || Number(dirVisValue) > 9999)) {
+        errors.push('Directional visibility value must be between 0000 and 9999 meters.');
+        errorFields.push('directional-visibility');
     }
 
-    if (!clouds.length || !clouds.some(cl => cl.amount && cl.height)) {
-        errors.push('At least one valid cloud layer is required.');
-        errorFields.push('clouds');
+    if (setErrorFields) setErrorFields(errorFields);
+    return errors;
+}
+
+// ========== CLOUDS VALIDATION ==========
+export function validateCloudFields(formData, setErrorFields) {
+    const errors = [];
+    const errorFields = [];
+    const { clouds, cavok } = formData;
+
+    // If CAVOK, skip all cloud errors
+    if (cavok) {
+        if (setErrorFields) setErrorFields([]);
+        return [];
     }
 
-    let prevHeight = 0;
-    clouds.forEach((layer, index) => {
-        const { amount, height } = layer;
+    // Expect clouds to be an array with at least one valid entry
+    const isValidClouds = Array.isArray(clouds) && clouds.length > 0 &&
+        clouds.some(cloud => cloud && cloud.amount && cloud.height);
 
-        if (!['FEW', 'SCT', 'BKN', 'OVC'].includes(amount)) {
-            errors.push(`Cloud layer ${index + 1}: Invalid amount code.`);
-            errorFields.push('clouds');
-        }
-
-        if (!/^\d{3}$/.test(height)) {
-            errors.push(`Cloud layer ${index + 1}: Height must be 3-digit number.`);
-            errorFields.push('clouds');
-        } else {
-            const h = parseInt(height);
-            if (h < prevHeight) {
-                errors.push(`Cloud layer ${index + 1}: Height must be in ascending order.`);
-                errorFields.push('clouds');
+    if (!isValidClouds) {
+        errors.push('At least one cloud layer must be specified.');
+        errorFields.push('cloud');
+    } else {
+        // If clouds array contains CB/TCU, amount & height are required (already covered in above .some())
+        for (const cloud of clouds) {
+            if ((cloud.amount === 'CB' || cloud.amount === 'TCU') && (!cloud.height || cloud.height.trim() === '')) {
+                errors.push('CB/TCU clouds must have a height.');
+                errorFields.push('cloud');
             }
-            prevHeight = h;
         }
+    }
 
-        if (amount === 'FEW' && index > 1) {
-            errors.push(`Cloud layer ${index + 1}: "FEW" should be used only in the first two layers.`);
-            errorFields.push('clouds');
+    if (setErrorFields) setErrorFields(errorFields);
+    return errors;
+}
+
+// ========== PRESENT WEATHER VALIDATION ==========
+export function validateWeatherFields(formData, setErrorFields) {
+    const errors = [];
+    const errorFields = [];
+    const { presentWeather, visibility, cavok } = formData;
+
+    // If CAVOK, skip present weather errors
+    if (cavok) {
+        if (setErrorFields) setErrorFields([]);
+        return [];
+    }
+
+    // Require present weather if visibility is less than 1000
+    if (visibility && !isNaN(Number(visibility)) && Number(visibility) < 1000) {
+        if (!presentWeather || presentWeather.trim() === '') {
+            errors.push('Present weather must be reported when visibility is less than 1000 meters.');
+            errorFields.push('weather');
         }
-    });
+    }
 
-    setErrorFields(prev => [...new Set([...prev, ...errorFields])]);
+    if (setErrorFields) setErrorFields(errorFields);
+    return errors;
+}
+
+// ========== TEMP/DEW POINT VALIDATION ==========
+export function validateTempDewPoint(formData, setErrorFields) {
+    const errors = [];
+    const errorFields = [];
+    const { temperature, dewPoint } = formData;
+
+    if (!temperature || temperature.trim() === '') {
+        errors.push('Temperature is required.');
+        errorFields.push('tempdew');
+    }
+    if (!dewPoint || dewPoint.trim() === '') {
+        errors.push('Dew point is required.');
+        errorFields.push('tempdew');
+    } else if (
+        temperature && dewPoint &&
+        !isNaN(Number(temperature)) && !isNaN(Number(dewPoint)) &&
+        Number(temperature) < Number(dewPoint)
+    ) {
+        errors.push('Temperature must not be less than dew point.');
+        errorFields.push('tempdew');
+    }
+
+    if (setErrorFields) setErrorFields(errorFields);
+    return errors;
+}
+
+// ========== QNH (PRESSURE) VALIDATION ==========
+export function validateQNH(formData, setErrorFields) {
+    const errors = [];
+    const errorFields = [];
+    const { pressure } = formData;
+
+    if (!pressure || pressure.trim() === '') {
+        errors.push('QNH is required.');
+        errorFields.push('qnh');
+    } else if (
+        !isNaN(Number(pressure)) &&
+        (Number(pressure) < 900 || Number(pressure) > 1100)
+    ) {
+        errors.push('QNH value must be between 900 and 1100 hPa.');
+        errorFields.push('qnh');
+    }
+
+    if (setErrorFields) setErrorFields(errorFields);
+    return errors;
+}
+
+// ========== DIRECTIONAL VISIBILITY VALIDATION ==========
+export function validateDirectionalVisibilityFields(formData, setErrorFields) {
+    // Alias for visibility with directional checks
+    return validateVisibilityFields(formData, setErrorFields);
+}
+
+// ========== COMBINED GROUP VALIDATORS ==========
+export function validateCloudVisibilityWeather(formData, setErrorFields) {
+    const errors = [];
+    const errorFields = [];
+    errors.push(...validateCloudFields(formData, ef => errorFields.push(...ef)));
+    errors.push(...validateVisibilityFields(formData, ef => errorFields.push(...ef)));
+    errors.push(...validateWeatherFields(formData, ef => errorFields.push(...ef)));
+    if (setErrorFields) setErrorFields(errorFields);
     return errors;
 }
 
 export function validateTempDewQnhFields(formData, setErrorFields) {
     const errors = [];
     const errorFields = [];
-
-    const { temperature, dewPoint, pressure } = formData;
-
-    if (!temperature) {
-        errors.push('Temperature is required.');
-        errorFields.push('tempDew');
-    } else if (!/^\d+$/.test(temperature) || Number(temperature) < 0) {
-        errors.push('Temperature must be a non-negative integer.');
-        errorFields.push('tempDew');
-    }
-
-    if (!dewPoint) {
-        errors.push('Dew point is required.');
-        errorFields.push('tempDew');
-    } else if (!/^\d+$/.test(dewPoint) || Number(dewPoint) < 0) {
-        errors.push('Dew point must be a non-negative integer.');
-        errorFields.push('tempDew');
-    }
-
-    if (temperature && dewPoint && Number(dewPoint) > Number(temperature)) {
-        errors.push('Dew point cannot exceed temperature.');
-        errorFields.push('tempDew');
-    }
-
-    if (!pressure) {
-        errors.push('QNH (pressure) is required.');
-        errorFields.push('qnh');
-    } else if (!/^\d{3,4}$/.test(pressure) || Number(pressure) < 800) {
-        errors.push('QNH must be a 3–4 digit number (≥ 800).');
-        errorFields.push('qnh');
-    }
-
-    setErrorFields(prev => [...new Set([...prev, ...errorFields])]);
-    return errors;
-}
-
-export function validateMandatoryFields(formData, metarList, setErrorFields) {
-    const errors = [];
-    const errorFields = [];
-
-    const { obsType, station } = formData;
-
-    if (!formData.country) {
-        errors.push('Country is required.');
-        errorFields.push('country');
-    }
-
-    if (!obsType) {
-        errors.push('Observation type is required.');
-        errorFields.push('obsType');
-    }
-
-    if (!station) {
-        errors.push('Station is required.');
-        errorFields.push('station');
-    } else if (metarList.some(metar => metar.includes(station))) {
-        errors.push('Station already exists in the METAR list.');
-        errorFields.push('station');
-    }
-
-    if (!formData.utcTime) {
-        errors.push('UTC Time is required.');
-        errorFields.push('utcTime');
-    }
-
-    setErrorFields(prev => [...new Set([...prev, ...errorFields])]);
+    errors.push(...validateTempDewPoint(formData, ef => errorFields.push(...ef)));
+    errors.push(...validateQNH(formData, ef => errorFields.push(...ef)));
+    if (setErrorFields) setErrorFields(errorFields);
     return errors;
 }

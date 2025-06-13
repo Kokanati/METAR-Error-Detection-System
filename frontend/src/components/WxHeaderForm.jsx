@@ -6,13 +6,13 @@ import { validateUtcTime } from '../utils/validateMetar';
 import UtcClock from './UtcClock';
 
 const stationsByCountry = {
+    "Vanuatu": ["NVVV", "NVSS", "NVSC", "NVSG", "NVSl", "NVVW", "NVVA"],
     "Tonga": ["NFTF", "NFTV", "NFTL", "NFTP", "NFTO", "NFTN"],
     "Fiji": ["NFFN", "NFNA", "NFNL", "NFNS", "NFNK"],
     "Samoa": ["NSFA", "NSMA"],
     "Cook Islands": ["NCRG"],
     "Niue": ["NIUE"],
     "Tuvalu": ["NGFU"],
-    "Vanuatu": ["NVVV", "NVSS"],
     "Solomon Islands": ["AGGH"],
     "Papua New Guinea": ["AYPY", "AYMD", "AYMO"],
     "Kiribati": ["NGTA", "NGTZ"],
@@ -42,12 +42,20 @@ const ttaaiiByCountry = {
     "Cook Islands": { METAR: "SACI31", SPECI: "SPCI31" },
     "Niue": { METAR: "SANI31", SPECI: "SPNI31" },
     "Tuvalu": { METAR: "SATV31", SPECI: "SPTV31" },
-    "Vanuatu": { METAR: "SAVU31", SPECI: "SPVU31" },
+    "Vanuatu": { METAR: "SANV20", SPECI: "SPNV20" },
     "Solomon Islands": { METAR: "SASB31", SPECI: "SPSB31" },
     "Papua New Guinea": { METAR: "SAPG31", SPECI: "SPPG31" },
     "Kiribati": { METAR: "SAKI31", SPECI: "SPKI31" },
     "Nauru": { METAR: "SANA31", SPECI: "SPNA31" },
     "Palau": { METAR: "SAPW31", SPECI: "SPPW31" }
+};
+
+const isValidEmailList = (emails) => {
+    const pattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emails
+        .split(/[;,]+/)
+        .map(e => e.trim())
+        .every(email => pattern.test(email));
 };
 
 const WxHeaderForm = () => {
@@ -62,8 +70,41 @@ const WxHeaderForm = () => {
 
     const [showEmailModal, setShowEmailModal] = useState(false);
     const [recipientEmailInput, setRecipientEmailInput] = useState(formData.recipientEmail || '');
+    const [emailError, setEmailError] = useState('');
+    const [savedEmail, setSavedEmail] = useState(formData.recipientEmail || '');
 
     const refUTC = useRef(null);
+
+    useEffect(() => {
+        const stored = localStorage.getItem('recipientEmail');
+        if (stored) {
+            updateField('recipientEmail', stored);
+            setSavedEmail(stored);
+            setRecipientEmailInput(stored);
+        }
+    }, []);
+
+    const handleEmailSave = () => {
+        const trimmedInput = recipientEmailInput.trim();
+
+        if (!isValidEmailList(trimmedInput)) {
+            setEmailError('❌ Please enter valid email address(es), separated by commas or semicolons.');
+            return;
+        }
+
+        if (savedEmail && trimmedInput !== savedEmail) {
+            const confirmReplace = window.confirm(
+                `An existing recipient email (${savedEmail}) is already set.\nDo you want to replace it with the new one?`
+            );
+            if (!confirmReplace) return;
+        }
+
+        updateField('recipientEmail', trimmedInput);
+        localStorage.setItem('recipientEmail', trimmedInput);
+        setSavedEmail(trimmedInput);
+        setShowEmailModal(false);
+        setEmailError('');
+    };
 
     const updateHeaderInfo = (country, obsType, utcTime) => {
         const ttaaii = ttaaiiByCountry[country]?.[obsType] || '';
@@ -216,7 +257,40 @@ const WxHeaderForm = () => {
                 </div>
                 {showEmailModal && (
                     <div className="modal-overlay">
-                        <div className="modal-box">
+                        <div className="modal-box" style={{ position: "relative" }}>
+                            {/* Top-right buttons */}
+                            <div style={{
+                                position: "absolute",
+                                top: "12px",
+                                right: "12px",
+                                display: "flex",
+                                gap: "8px"
+                            }}>     
+                                {/* Account Settings */}
+                                <button
+                                    className="icon-button"
+                                    title="Account Settings"
+                                    onClick={() => window.location.href = "/app/user-profile"} // Update this if your Frappe URL differs
+                                >
+                                    <span role="img" aria-label="Settings">👤</span>
+                                </button>
+                                {/* Logout */}
+                                <button
+                                    className="icon-button"
+                                    title="Logout"
+                                    onClick={async () => {
+                                        try {
+                                            await fetch("/api/method/logout", { method: "GET", credentials: "include" });
+                                            window.location.href = "/login"; // or just window.location.reload();
+                                        } catch (e) {
+                                            alert("Logout failed!");
+                                            console.error("Logout error:", e);
+                                        }
+                                    }}
+                                >
+                                    <span role="img" aria-label="Logout">🚪</span>
+                                </button>
+                            </div>
                             <h3>Email Configuration</h3>
                             SMTP Server: mail.jlh-tonga.com<br />
                             SMTP Port: 465<br />
@@ -225,13 +299,15 @@ const WxHeaderForm = () => {
                             <br />
                             <label htmlFor="recipientEmail">Recipient Email: </label><br />
                             <input
-                                type="email"
+                                type="text"
                                 value={recipientEmailInput}
                                 onChange={(e) => setRecipientEmailInput(e.target.value)}
                                 placeholder="example@jlh-tonga.com"
                                 className="email-input"
+                                style={{ fontStyle: 'italic', color: '#555' }}
                             />
                             <small style={{ color: '#888' }}>This email will receive the METARs generated by this form.</small><br />
+                            {emailError && <div style={{ color: 'red', marginTop: '0.25rem' }}>{emailError}</div>}
                             <div style={{ marginTop: '1rem', textAlign: 'right' }}>
                                 <button
                                     onClick={() => setShowEmailModal(false)}
@@ -240,17 +316,13 @@ const WxHeaderForm = () => {
                                 >Cancel</button>
                                 <button
                                     className="gray-button"
-                                    onClick={() => {
-                                        updateField('recipientEmail', recipientEmailInput);
-                                        setShowEmailModal(false);
-                                    }}
+                                    onClick={handleEmailSave}
                                 >Save</button>
                             </div>
                         </div>
                     </div>
                 )}
             </div>
-
         </div>
     );
 };

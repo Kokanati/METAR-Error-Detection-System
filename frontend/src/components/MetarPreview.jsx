@@ -54,7 +54,7 @@ const MetarPreview = () => {
     const cloudSpans = clouds
         .filter(cl => cl.amount && cl.height)
         .map((cl, idx) => {
-            const val = `${cl.amount}${cl.height}`;
+            const val = `${cl.amount}${cl.height}${cl.type ?? ''}`;
             return (
                 <span
                     key={`cloud-${idx}`}

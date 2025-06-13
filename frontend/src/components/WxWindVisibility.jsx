@@ -1,24 +1,81 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import '../App.css';
 import { useFormData } from '../context/FormContext';
 
 const WxWindVisibility = () => {
-    const { formData, updateField } = useFormData();
-    const [showWindVar, setShowWindVar] = useState(false);
+    const {
+        formData,
+        updateField,
+        appendMetar,
+        setErrorFields,
+        resetMetarBody
+    } = useFormData();
+
     const [errors, setErrors] = useState({});
 
-    // 🔍 Validate windDir, windSpeed, gust, and basic wind variation format
+    const isDisabled = formData.noWxReport;
+
+    // Handle NO WX toggle
+    const handleNoWxChange = () => {
+        const newValue = !formData.noWxReport;
+        updateField('noWxReport', newValue);
+
+        if (newValue) {
+            const { obsType, station, utcTime } = formData;
+
+            if (!station || !utcTime || !obsType) {
+                alert("Please fill in Station, UTC Time, and Obs Type before setting NO WX Report.");
+                updateField('noWxReport', false);
+                return;
+            }
+
+            const nilString = `${obsType} ${station} ${utcTime}Z NIL=`;
+
+            const confirm = window.confirm(`${station} has NIL observation. Proceed?`);
+
+            if (confirm) {
+                // Reset all EXCEPT: country, obsType, utcTime, cccc, ttaaii, metarList
+                updateField('station', '');
+                updateField('windDir', '');
+                updateField('windSpeed', '');
+                updateField('gust', '');
+                updateField('cavok', false);
+                updateField('visibility', '');
+                updateField('windV1', '');
+                updateField('windV2', '');
+                updateField('clouds', []);
+                updateField('temperature', '');
+                updateField('dewPoint', '');
+                updateField('pressure', '');
+                updateField('remarks', '');
+                updateField('recentWeather', '');
+                updateField('showWindVar', false);
+                updateField('showDirVis', false);
+                updateField('dirVisValue', '');
+                updateField('dirVisDir', '');
+                updateField('showPresentWeather', false);
+                updateField('presentWeather', '');
+                updateField('showRecentWeather', false);
+                updateField('showRemarks', false);
+                setErrorFields([]);
+                appendMetar(nilString);
+                updateField('noWxReport', false); // Untick the checkbox
+            } else {
+                updateField('noWxReport', false);
+            }
+        }
+    };
+
+    // 🔍 Validate windDir, windSpeed, gust, and wind variation format
     useEffect(() => {
         const errs = {};
-        const { windDir, windSpeed, gust, windV1, windV2 } = formData;
+        const { windDir, windSpeed, gust, windV1, windV2, showWindVar } = formData;
 
-        if (windDir) {
-            // Must be exactly 3 digits or 'VRB'
+        if (windDir && windDir !== '///') {
             if (!/^(\d{3}|VRB)$/.test(windDir)) {
                 errs.windDir = 'Must be 3 digits or "VRB"';
             } else if (/^\d{3}$/.test(windDir)) {
                 const deg = Number(windDir);
-                // Must be within range 0–360 AND a multiple of 10
                 if (deg < 0 || deg > 360) {
                     errs.windDir = 'Direction must be between 000–360';
                 } else if (deg % 10 !== 0) {
@@ -27,17 +84,16 @@ const WxWindVisibility = () => {
             }
         }
 
-        // Wind speed validation
-        if (windSpeed && (!/^\d+$/.test(windSpeed) || Number(windSpeed) < 0)) {
-            errs.windSpeed = 'Must be a non-negative number';
+        if (windSpeed && windSpeed !== '//') {
+            if (!/^\d+$/.test(windSpeed) || Number(windSpeed) < 0) {
+                errs.windSpeed = 'Must be a non-negative number or "//" for missing.';
+            }
         }
 
-        // Gust validation: must be >= wind speed + 10
         if (gust && windSpeed && Number(gust) < Number(windSpeed) + 10) {
             errs.gust = 'Gust must be ≥ Wind Speed + 10';
         }
 
-        // Wind variation format check
         if (showWindVar) {
             if (windV1 && !/^\d{3}$/.test(windV1)) {
                 errs.windV1 = 'V1 must be 3 digits';
@@ -54,7 +110,7 @@ const WxWindVisibility = () => {
         formData.gust,
         formData.windV1,
         formData.windV2,
-        showWindVar
+        formData.showWindVar
     ]);
 
     const isGustEnabled = Number(formData.windSpeed) >= 15;
@@ -62,6 +118,15 @@ const WxWindVisibility = () => {
     return (
         <div className="section">
             <div className="field-subgroup">
+                <label title="This is a NIL observation.">
+                    <input
+                        type="checkbox"
+                        checked={formData.noWxReport}
+                        onChange={handleNoWxChange}
+                    />
+                    {' '}NO WX Report |
+                </label>
+
                 <label>Wind Direction</label>
                 <input
                     type="text"
@@ -70,6 +135,7 @@ const WxWindVisibility = () => {
                     className={`form-input ${errors.windDir ? 'error' : ''}`}
                     placeholder="Direction"
                     maxLength={3}
+                    disabled={isDisabled}
                 />
                 {errors.windDir && <div className="error-message">{errors.windDir}</div>}
             </div>
@@ -83,6 +149,8 @@ const WxWindVisibility = () => {
                         onChange={(e) => updateField('windSpeed', e.target.value)}
                         className={`form-input ${errors.windSpeed ? 'error' : ''}`}
                         placeholder="Speed"
+                        maxLength={3}
+                        disabled={isDisabled}
                     />
                     <span>G</span>
                     <input
@@ -91,7 +159,7 @@ const WxWindVisibility = () => {
                         onChange={(e) => updateField('gust', e.target.value)}
                         className={`form-input ${errors.gust ? 'error' : ''}`}
                         placeholder="Gust"
-                        disabled={!isGustEnabled}
+                        disabled={!isGustEnabled || isDisabled}
                     />
                 </div>
                 {errors.windSpeed && <div className="error-message">{errors.windSpeed}</div>}
@@ -103,21 +171,22 @@ const WxWindVisibility = () => {
                     <label>
                         <input
                             type="checkbox"
-                            checked={showWindVar}
+                            checked={formData.showWindVar}
                             onChange={() => {
-                                setShowWindVar(!showWindVar);
-                                if (showWindVar) {
-                                    // Clear V1 and V2 when unchecked
+                                const newValue = !formData.showWindVar;
+                                updateField('showWindVar', newValue);
+                                if (!newValue) {
                                     updateField('windV1', '');
                                     updateField('windV2', '');
                                 }
                             }}
+                            disabled={isDisabled}
                         />
                         Wind Variation
                     </label>
                 </div>
 
-                {showWindVar && (
+                {formData.showWindVar && (
                     <div className="field-subgroup">
                         <input
                             type="text"
@@ -126,6 +195,7 @@ const WxWindVisibility = () => {
                             className={`form-input ${errors.windV1 ? 'error' : ''}`}
                             maxLength={3}
                             placeholder="From V1"
+                            disabled={isDisabled}
                         />
                         {errors.windV1 && <div className="error-message">{errors.windV1}</div>}
 
@@ -136,6 +206,7 @@ const WxWindVisibility = () => {
                             className={`form-input ${errors.windV2 ? 'error' : ''}`}
                             maxLength={3}
                             placeholder="To V2"
+                            disabled={isDisabled}
                         />
                         {errors.windV2 && <div className="error-message">{errors.windV2}</div>}
                     </div>
@@ -145,6 +216,7 @@ const WxWindVisibility = () => {
                         type="checkbox"
                         checked={formData.cavok || false}
                         onChange={() => updateField('cavok', !formData.cavok)}
+                        disabled={isDisabled}
                     />
                     CAVOK
                 </label>

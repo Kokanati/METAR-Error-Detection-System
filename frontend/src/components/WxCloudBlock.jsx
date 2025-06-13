@@ -4,21 +4,33 @@ import { useFormData } from '../context/FormContext';
 
 const WxCloudBlock = () => {
     const { formData, updateField } = useFormData();
-    const [cloudLayers, setCloudLayers] = useState([{ amount: '', height: '' }]);
+    const [cloudLayers, setCloudLayers] = useState([{ amount: '', height: '', type: '', showCb: false }]);
     const [errors, setErrors] = useState([]);
     const [hasTouchedClouds, setHasTouchedClouds] = useState(false);
 
     const refVisibility = useRef(null);
+    const isDisabled = formData.noWxReport;
 
-    // Sync cloudLayers with formData and reset from outside
+    const validateVisibility = (val) => /^[0-9]{4}$/.test(val);
+    const validatePresentWeather = (val) => /^(-|\+)?[A-Z]{2,6}$/.test(val);
+
+    const visError = formData.visibility && !validateVisibility(formData.visibility) ? 'Visibility must be 4 digits (e.g. 9999)' : '';
+    const wxError = formData.showPresentWeather && formData.presentWeather && !validatePresentWeather(formData.presentWeather) ? 'Invalid present weather code' : '';
+
     useEffect(() => {
-        const cleared = formData.clouds.length === 0 ||
+        const isCleared =
+            formData.clouds.length === 0 ||
             (formData.clouds.length === 1 &&
                 !formData.clouds[0].amount &&
-                !formData.clouds[0].height);
+                !formData.clouds[0].height &&
+                !formData.clouds[0].type);
 
-        setCloudLayers(cleared ? [{ amount: '', height: '' }] : formData.clouds);
-        if (cleared) setHasTouchedClouds(false);  // 👈 this prevents validation from showing red
+        if (isCleared) {
+            setCloudLayers([{ amount: '', height: '', type: '', showCb: false }]);
+            setHasTouchedClouds(false);
+        } else {
+            setCloudLayers(formData.clouds);
+        }
     }, [formData.clouds]);
 
 
@@ -36,8 +48,8 @@ const WxCloudBlock = () => {
     };
 
     const handleAddLayer = () => {
-        if (cloudLayers.length >= 4) return;
-        setCloudLayers([...cloudLayers, { amount: '', height: '' }]);
+        if (cloudLayers.length >= 4 || isDisabled) return;
+        setCloudLayers([...cloudLayers, { amount: '', height: '', type: '', showCb: false }]);
     };
 
     const handleRemoveLayer = (index) => {
@@ -45,36 +57,25 @@ const WxCloudBlock = () => {
         setCloudLayers(updated);
     };
 
-    // Cloud Layer validation
+    const toggleCbSection = (index) => {
+        const updated = [...cloudLayers];
+        updated[index].showCb = !updated[index].showCb;
+        if (!updated[index].showCb) updated[index].type = '';
+        setCloudLayers(updated);
+    };
+
     useEffect(() => {
         if (!hasTouchedClouds) return;
-
         const newErrors = [];
         cloudLayers.forEach((layer, idx) => {
             const err = {};
-            if (!layer.amount) {
-                err.amount = 'Required';
-            } else if (layer.amount === 'FEW' && idx > 1) {
-                err.amount = '"FEW" only allowed in first 2 layers';
-            }
-
-            if (!/^[0-9]{3}$/.test(layer.height)) {
-                err.height = 'Height must be 3 digits';
-            }
-
+            if (!layer.amount) err.amount = 'Required';
+            else if (layer.amount === 'FEW' && idx > 1) err.amount = '"FEW" only allowed in first 2 layers';
+            if (!/^[0-9]{3}$/.test(layer.height)) err.height = 'Height must be 3 digits';
             newErrors.push(err);
         });
-
         setErrors(newErrors);
     }, [cloudLayers, hasTouchedClouds]);
-
-    const validateVisibility = (val) => /^[0-9]{4}$/.test(val);
-    const validatePresentWeather = (val) => /^(-|\+)?[A-Z]{2,6}$/.test(val);
-    const validateDirVis = (val, dir) => /^[0-9]{4}$/.test(val) && ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'].includes(dir);
-
-    const visError = formData.visibility && !validateVisibility(formData.visibility) ? 'Visibility must be 4 digits (e.g. 9999)' : '';
-    const wxError = formData.showPresentWeather && formData.presentWeather && !validatePresentWeather(formData.presentWeather) ? 'Invalid present weather code' : '';
-    const dirVisError = formData.showDirVis && (!validateDirVis(formData.dirVisValue, formData.dirVisDir)) ? 'Directional visibility format or direction invalid' : '';
 
     if (formData.cavok) return null;
 
@@ -90,59 +91,12 @@ const WxCloudBlock = () => {
                     className={`form-input ${visError ? 'error' : ''}`}
                     placeholder="e.g. 9999"
                     maxLength={4}
+                    disabled={isDisabled}
                 />
                 {visError && <div className="error-message">{visError}</div>}
-
-                <div className="field-subgroup">
-                    <label>
-                        <input
-                            type="checkbox"
-                            checked={formData.showDirVis}
-                            onChange={() => {
-                                const newValue = !formData.showDirVis;
-                                updateField('showDirVis', newValue);
-                                if (!newValue) {
-                                    updateField('dirVisValue', '');
-                                    updateField('dirVisDir', '');
-                                }
-                            }}
-                        />
-                        Directional Visibility
-                    </label>
-                </div>
-
-                {formData.showDirVis && (
-                    <div className="field-subgroup">
-                        <input
-                            type="text"
-                            value={formData.dirVisValue || ''}
-                            onChange={(e) => updateField('dirVisValue', e.target.value)}
-                            className={`form-input ${dirVisError ? 'error' : ''}`}
-                            placeholder="e.g. 4000"
-                            maxLength={4}
-                            style={{ width: '70px' }}
-                        />
-                        <select
-                            value={formData.dirVisDir || ''}
-                            onChange={(e) => updateField('dirVisDir', e.target.value)}
-                            className={`form-input ${dirVisError ? 'error' : ''}`}
-                            style={{ width: '70px' }}
-                        >
-                            <option value="">Dir</option>
-                            <option value="N">N</option>
-                            <option value="NE">NE</option>
-                            <option value="E">E</option>
-                            <option value="SE">SE</option>
-                            <option value="S">S</option>
-                            <option value="SW">SW</option>
-                            <option value="W">W</option>
-                            <option value="NW">NW</option>
-                        </select>
-                        {dirVisError && <div className="error-message">{dirVisError}</div>}
-                    </div>
-                )}
             </div>
 
+            {/* Restored Present Weather field */}
             <div className="field-row">
                 <div className="field-subgroup">
                     <label>
@@ -152,15 +106,13 @@ const WxCloudBlock = () => {
                             onChange={() => {
                                 const newValue = !formData.showPresentWeather;
                                 updateField('showPresentWeather', newValue);
-                                if (!newValue) {
-                                    updateField('presentWeather', '');
-                                }
+                                if (!newValue) updateField('presentWeather', '');
                             }}
+                            disabled={isDisabled}
                         />
                         Present Weather
                     </label>
                 </div>
-
                 {formData.showPresentWeather && (
                     <div className="field-subgroup">
                         <input
@@ -170,6 +122,7 @@ const WxCloudBlock = () => {
                             className={`form-input ${wxError ? 'error' : ''}`}
                             placeholder="-SHRA"
                             style={{ width: '70px' }}
+                            disabled={isDisabled}
                         />
                         {wxError && <div className="error-message">{wxError}</div>}
                     </div>
@@ -177,12 +130,13 @@ const WxCloudBlock = () => {
             </div>
 
             {cloudLayers.map((layer, index) => (
-                <div key={index} className="field-subgroup" style={{ marginBottom: '0.75rem' }}>
+                <div key={index} className="field-subgroup" style={{ marginBottom: '0.75rem', position: 'relative' }}>
                     <label>Cloud Layer</label>
                     <select
                         value={layer.amount}
                         onChange={(e) => handleChange(index, 'amount', e.target.value)}
                         className={`form-input ${hasTouchedClouds && errors[index]?.amount ? 'error' : ''}`}
+                        disabled={isDisabled}
                     >
                         <option value="">Amount</option>
                         <option value="FEW">FEW</option>
@@ -197,27 +151,61 @@ const WxCloudBlock = () => {
                         placeholder="Height (e.g. 030)"
                         className={`form-input ${hasTouchedClouds && errors[index]?.height ? 'error' : ''}`}
                         maxLength={3}
+                        disabled={isDisabled}
                     />
-                    {cloudLayers.length > 1 && (
-                        <button
-                            onClick={() => handleRemoveLayer(index)}
-                            className="button-toggle"
-                            style={{ marginLeft: '0.5rem' }}
-                        >
-                            Remove
-                        </button>
+                    {!layer.showCb && (
+                        <>
+                            {index < 2 && (
+                                <button
+                                    onClick={() => toggleCbSection(index)}
+                                    className="button-toggle"
+                                    style={{ marginLeft: '0.5rem' }}
+                                    disabled={isDisabled}
+                                >+ CB?</button>
+                            )}
+                            {cloudLayers.length > 1 && (
+                                <button
+                                    onClick={() => handleRemoveLayer(index)}
+                                    className="button-toggle"
+                                    style={{ marginLeft: '0.5rem' }}
+                                    disabled={isDisabled}
+                                >Remove</button>
+                            )}
+                        </>
                     )}
-                    {hasTouchedClouds && (
-                        <div style={{ color: 'red', fontSize: '12px' }}>
-                            {errors[index]?.amount && <div>{errors[index].amount}</div>}
-                            {errors[index]?.height && <div>{errors[index].height}</div>}
-                        </div>
+
+                    {layer.showCb && (
+                        <>
+                            <div style={{ display: 'flex', flexDirection: 'column', marginTop: '0.5rem' }}>
+                                <label>
+                                    <input
+                                        type="radio"
+                                        value="TCU"
+                                        checked={layer.type === 'TCU'}
+                                        onChange={(e) => handleChange(index, 'type', e.target.value)}
+                                        disabled={isDisabled}
+                                    /> TCU
+                                </label>
+                                <label>
+                                    <input
+                                        type="radio"
+                                        value="CB"
+                                        checked={layer.type === 'CB'}
+                                        onChange={(e) => handleChange(index, 'type', e.target.value)}
+                                        disabled={isDisabled}
+                                    /> CB
+                                </label>
+                            </div>
+                            <span
+                                style={{ color: 'red', fontWeight: 'bold', cursor: 'pointer', position: 'absolute', top: '0', right: '0.1rem' }}
+                                onClick={() => toggleCbSection(index)}
+                            >–</span>
+                        </>
                     )}
                 </div>
             ))}
-
             {cloudLayers.length < 4 && (
-                <button onClick={handleAddLayer} className="button-toggle">+ Add Cloud Layer</button>
+                <button onClick={handleAddLayer} className="button-toggle" disabled={isDisabled}>+ Add Cloud Layer</button>
             )}
         </div>
     );

@@ -1,54 +1,75 @@
-
-import React, { useEffect } from 'react';
-
+import React, { useState, useEffect, useRef } from 'react';
 import '../App.css';
 import { useFormData } from '../context/FormContext';
 
 const MetarActions = () => {
-    const { formData, metarList, setMetarList, setValidatedHeader, updateField } = useFormData();
+    const {
+        formData,
+        metarList,
+        setMetarList,
+        setValidatedHeader,
+        updateField
+    } = useFormData();
 
     const [showModal, setShowModal] = React.useState(false);
-    const [arcModal, setarcModal] = React.useState(false);
-
-
-    // Header string: TTAAii CCCC UTCtime
-    const buildHeaderString = () => {
-        const { ttaaii, cccc, utcTime } = formData;
-        return [ttaaii, cccc, utcTime].filter(Boolean).join(' ');
-    };
-    //const { metarList, setMetarList, setValidatedHeader, updateField } = useFormData();
-
+    const [arcModal, setArcModal] = React.useState(false);
     const [isSendDisabled, setIsSendDisabled] = React.useState(true);
 
     useEffect(() => {
         setIsSendDisabled(metarList.length === 0);
     }, [metarList]);
 
-    const handleCopy = () => {
+    const buildHeaderString = () => {
+        const { ttaaii, cccc, utcTime } = formData;
+        return [ttaaii, cccc, utcTime].filter(Boolean).join(' ');
+    };
+   
+
+    const [copySuccess, setCopySuccess] = useState(false);
+
+    const handleCopy = async () => {
         if (metarList.length === 0) return;
 
         const allMetars = metarList.join('\n');
-        navigator.clipboard.writeText(allMetars)
-            .then(() => {
-                alert('All METAR lines copied to clipboard');
-            })
-            .catch(err => {
-                console.error('Failed to copy METARs:', err);
-                alert('Failed to copy METARs to clipboard');
-            });
+
+        // Try Clipboard API first if available and context is secure
+        if (navigator.clipboard && window.isSecureContext) {
+            try {
+                await navigator.clipboard.writeText(allMetars);
+                setCopySuccess(true);
+                setTimeout(() => setCopySuccess(false), 5000);
+            } catch (err) {
+                // Fallback if Clipboard API fails
+                fallbackCopy();
+            }
+        } else {
+            // Use legacy fallback directly
+            fallbackCopy();
+        }
+
+        function fallbackCopy() {
+            // Create hidden textarea, copy, then remove
+            const textarea = document.createElement('textarea');
+            textarea.value = allMetars;
+            textarea.setAttribute('readonly', '');
+            textarea.style.position = 'absolute';
+            textarea.style.left = '-9999px';
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                const successful = document.execCommand('copy');
+                setCopySuccess(successful);
+                setTimeout(() => setCopySuccess(false), 5000);
+                if (!successful) {
+                    alert('❌ Fallback: Could not copy METARs');
+                }
+            } catch (err) {
+                alert('❌ Fallback: Could not copy METARs');
+            }
+            document.body.removeChild(textarea);
+        }
     };
 
-
-    const handleIngest = () => {
-        {/*alert('This is a demo version. METAR ingestion functionality is available in the full version only.\n\nFor more information, visit https://jlh-tonga.com or contact us at sales@jlh-tonga.com');*/ }
-        setShowModal(true);
-    };
-
-
-    const handleArchive = () => {
-        {/*alert('This is a Demo version. Archiving functionality is for Full-version Only.');*/ }
-        setarcModal(true);
-    };
 
     const handleRemoveLine = () => {
         if (metarList.length === 0) return;
@@ -63,19 +84,17 @@ const MetarActions = () => {
     const handleEdit = () => {
         if (metarList.length === 0) return;
 
-        // Ask user which line to edit
         const indexInput = prompt(`Enter the METAR line number to edit (1 to ${metarList.length}):`);
-        const index = parseInt(indexInput, 10) - 1;
+        if (indexInput === null) return;  // 🔒 user clicked "Cancel"
 
+        const index = parseInt(indexInput, 10) - 1;
         if (isNaN(index) || index < 0 || index >= metarList.length) {
             alert('Invalid line number.');
             return;
         }
 
-        // Prompt to edit the selected METAR line
         const currentValue = metarList[index];
         const editable = prompt('Edit the METAR string below:', currentValue);
-
         if (editable !== null && editable.trim() !== '') {
             const updatedList = [...metarList];
             updatedList[index] = editable.trim();
@@ -83,14 +102,20 @@ const MetarActions = () => {
         }
     };
 
-
-
+    
     const handleSendMetar = async () => {
+        const { recipientEmail } = formData;
         const header = buildHeaderString();
         const metarBody = metarList.join('\n');
 
-        const fullMessage = `You are about to send:\n\n${header}\n\n${metarBody}\n\nContinue?`;
-        const confirmSend = window.confirm(fullMessage);
+        if (!recipientEmail || !/^\S+@\S+\.\S+$/.test(recipientEmail)) {
+            alert('❌ Please enter a valid recipient email before sending METAR.');
+            return;
+        }
+
+        const confirmSend = window.confirm(
+            `You are about to send the following METARs to ${recipientEmail}\n\n${header}\n${metarBody} \n\nContinue?`
+        );
 
         if (!confirmSend) return;
 
@@ -99,36 +124,29 @@ const MetarActions = () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-Frappe-CSRF-Token': window.csrf_token || '' // fallback if token is exposed globally
+                    'X-Frappe-CSRF-Token': window.csrf_token || ''
                 },
                 body: JSON.stringify({
                     header,
                     metar_list: metarBody,
-                    recipient_email: formData.recipientEmail
+                    recipient_email: recipientEmail
                 })
             });
 
             const result = await response.json();
-
             if (response.ok && result.message && result.message.success) {
                 alert(`✅ ${JSON.stringify(result.message.message)}`);
             } else {
                 alert(`❌ Failed to send: ${result.message?.message || 'Unknown error'}`);
-        }
-
+            }
         } catch (error) {
             console.error('Send METAR failed:', error);
-            alert(JSON.stringify(result.message, null, 2));
-            //alert('Could not send METAR. Check server logs.', error);
+            alert('❌ Could not send METAR. Check server logs.');
         }
     };
 
-
-
-
     return (
         <div className="section">
-            {/*<h2 className="section-title">METAR Header</h2>*/}
             <div className="preview-box">
                 {buildHeaderString() || 'WMO METAR Header will appear here when fields are filled in.'}
             </div>
@@ -143,48 +161,54 @@ const MetarActions = () => {
                     <div style={{ color: '#666' }}>No METARs yet. Fill out the form and click "Check" to generate one.</div>
                 )}
             </div>
+
             <div className="button-row">
                 <button onClick={handleCopy} className="gray-button">Copy</button>
                 <button onClick={handleRemoveLine} className="danger-button">Remove Line</button>
                 <button onClick={handleEdit} className="gray-button">Edit Content</button>
-                <button onClick={handleIngest} className="gray-button">Ingest to CliDE</button>
-                <button onClick={handleArchive} className="gray-button">Archive</button>
+                <button onClick={() => setShowModal(true)} className="gray-button">Ingest to CliDE</button>
+                <button onClick={() => setArcModal(true)} className="gray-button">Archive</button>
                 <button onClick={handleSendMetar} className="send-button" disabled={isSendDisabled}>Send METAR</button>
-
             </div>
+            {copySuccess && (
+                <div style={{
+                    background: '#d4edda',
+                    color: '#155724',
+                    padding: '8px 12px',
+                    borderRadius: '4px',
+                    marginTop: '8px',
+                    fontWeight: 'bold',
+                    transition: 'opacity 0.5s ease-in-out'
+                    }}>
+                    ✅ METAR copied to clipboard!
+                </div>
+            )}
             {showModal && (
                 <div className="modal-overlay">
                     <div className="modal-box">
                         <h3>⚠️ Demo Version</h3>
                         <p>
-                            METAR ingestion to CliDE database or any database is only available in the full version.
-                            <br />
+                            METAR ingestion to CliDE database or any database is only available in the full version.<br />
                             For more info, please visit{' '}
-                            <a href="https://jlh-tonga.com/?page_id=306" target="_blank" rel="noopener noreferrer">
-                                JLH Website
-                            </a>{' '}
-                            or contact us at{' '}
-                            <a href="mailto:sales@jlh-tonga.com">sales@jlh-tonga.com</a>.
+                            <a href="https://jlh-tonga.com/?page_id=306" target="_blank" rel="noopener noreferrer">JLH Website</a>{' '}
+                            or contact us at <a href="mailto:sales@jlh-tonga.com">sales@jlh-tonga.com</a>.
                         </p>
                         <button onClick={() => setShowModal(false)}>Close</button>
                     </div>
                 </div>
             )}
+
             {arcModal && (
                 <div className="modal-overlay">
                     <div className="modal-box">
                         <h3>⚠️ Demo Version</h3>
                         <p>
-                            Local Auto-archive of weather observations is only available in the full version.
-                            <br />
+                            Local Auto-archive of weather observations is only available in the full version.<br />
                             For more info, please visit{' '}
-                            <a href="https://jlh-tonga.com/?page_id=306" target="_blank" rel="noopener noreferrer">
-                                JLH Website
-                            </a>{' '}
-                            or contact us at{' '}
-                            <a href="mailto:sales@jlh-tonga.com">sales@jlh-tonga.com</a>.
+                            <a href="https://jlh-tonga.com/?page_id=306" target="_blank" rel="noopener noreferrer">JLH Website</a>{' '}
+                            or contact us at <a href="mailto:sales@jlh-tonga.com">sales@jlh-tonga.com</a>.
                         </p>
-                        <button onClick={() => setarcModal(false)}>Close</button>
+                        <button onClick={() => setArcModal(false)}>Close</button>
                     </div>
                 </div>
             )}

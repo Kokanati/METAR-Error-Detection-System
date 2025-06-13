@@ -14,6 +14,8 @@ const WxTempPressureBlock = () => {
     const refDew = useRef(null);
     const refQnh = useRef(null);
 
+    const isDisabled = formData.noWxReport;
+
     // Validate inputs whenever they change
     useEffect(() => {
         const newErrors = {
@@ -26,21 +28,24 @@ const WxTempPressureBlock = () => {
         const dew = formData.dewPoint;
         const qnh = formData.pressure;
 
-        if (temp && (!/^\d+$/.test(temp) || Number(temp) < 0)) {
-            newErrors.temperature = 'Temperature must be a non-negative number.';
+        if (temp && temp !== '//' && (!/^\d+$/.test(temp) || Number(temp) < 0)) {
+            newErrors.temperature = 'Temperature must be a non-negative number or "//" for missing.';
         }
 
-        if (dew && (!/^\d+$/.test(dew) || Number(dew) < 0)) {
-            newErrors.dewPoint = 'Dew Point must be a non-negative number.';
+        if (dew && dew !== '//' && (!/^\d+$/.test(dew) || Number(dew) < 0)) {
+            newErrors.dewPoint = 'Dew Point must be a non-negative number or "//" for missing.';
         }
 
-        if (temp && dew && Number(dew) > Number(temp)) {
+        if (temp && dew && temp !== '//' && dew !== '//' && Number(dew) > Number(temp)) {
             newErrors.dewPoint = 'Dew Point cannot be higher than Temperature.';
         }
 
-        if (qnh && (!/^\d{4}$/.test(qnh) || Number(qnh) < 800)) {
-            newErrors.qnh = 'QNH must be a 4 digit number (≥ 800).';
+        if (qnh && !/^(\d{4}|\/\/\/\/)$/.test(qnh)) {
+            newErrors.qnh = 'QNH must be 4 digits or "////" for missing.';
+        } else if (qnh && qnh !== '////' && (Number(qnh) < 900 || Number(qnh) > 1100)) {
+            newErrors.qnh = 'QNH must be between 900 and 1100 hPa.';
         }
+
 
         setErrors(newErrors);
     }, [formData.temperature, formData.dewPoint, formData.pressure]);
@@ -57,7 +62,8 @@ const WxTempPressureBlock = () => {
                         onChange={(e) => updateField('temperature', e.target.value)}
                         className={`form-input ${errors.temperature ? 'error' : ''}`}
                         placeholder="°C"
-                        maxLength={3}
+                        maxLength={2}
+                        disabled={isDisabled}
                     />
                     {errors.temperature && (
                         <div className="error-message">{errors.temperature}</div>
@@ -73,7 +79,8 @@ const WxTempPressureBlock = () => {
                         onChange={(e) => updateField('dewPoint', e.target.value)}
                         className={`form-input ${errors.dewPoint ? 'error' : ''}`}
                         placeholder="°C"
-                        maxLength={3}
+                        maxLength={2}
+                        disabled={isDisabled}
                     />
                     {errors.dewPoint && (
                         <div className="error-message">{errors.dewPoint}</div>
@@ -91,6 +98,7 @@ const WxTempPressureBlock = () => {
                     className={`form-input ${errors.qnh ? 'error' : ''}`}
                     placeholder="QNH"
                     maxLength={4}
+                    disabled={isDisabled}
                 />
                 {errors.qnh && (
                     <div className="error-message">{errors.qnh}</div>

@@ -7,8 +7,7 @@ const WxRemarksBlock = () => {
     const refRemarks = useRef(null);
     const refRecent = useRef(null);
 
-    {/*const toggleRecent = () => updateField('showRecentWeather', !formData.showRecentWeather);*/ }
-    {/*const toggleRemarks = () => updateField('showRemarks', !formData.showRemarks);*/ }
+    const isDisabled = formData.noWxReport;
 
     useEffect(() => {
         if (formData.showRemarks) refRemarks.current?.focus();
@@ -34,7 +33,6 @@ const WxRemarksBlock = () => {
         }
     };
 
-
     return (
         <div className="section">
             <div className="field-group">
@@ -43,6 +41,7 @@ const WxRemarksBlock = () => {
                         type="checkbox"
                         checked={formData.showRecentWeather}
                         onChange={toggleRecent}
+                        disabled={isDisabled}
                     />
                     Recent Weather
                 </label>
@@ -54,6 +53,7 @@ const WxRemarksBlock = () => {
                         onChange={(e) => updateField('recentWeather', e.target.value.toUpperCase())}
                         className="form-smallinput"
                         placeholder="e.g. RERA"
+                        disabled={isDisabled}
                     />
                 )}
             </div>
@@ -64,6 +64,7 @@ const WxRemarksBlock = () => {
                         type="checkbox"
                         checked={formData.showRemarks}
                         onChange={toggleRemarks}
+                        disabled={isDisabled}
                     />
                     Remarks
                 </label>
@@ -75,6 +76,7 @@ const WxRemarksBlock = () => {
                         onChange={(e) => updateField('remarks', e.target.value)}
                         className="form-smallinput"
                         placeholder="e.g. RMK DRY AIR 48%"
+                        disabled={isDisabled}
                     />
                 )}
             </div>

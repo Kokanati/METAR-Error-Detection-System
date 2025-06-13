@@ -71,9 +71,10 @@ function App() {
       if (clouds.length > 0) {
         cloudsStr = clouds
           .filter(cl => cl.amount && cl.height)
-          .map(cl => `${cl.amount}${cl.height}`)
+          .map(cl => `${cl.amount}${cl.height}${cl.type || ''}`)
           .join(' ');
       }
+
       visClouds = [vis, showPresentWeather && presentWeather, cloudsStr].filter(Boolean).join(' ');
     }
 
@@ -145,7 +146,14 @@ function App() {
           <WxRemarksBlock />
 
           <div className="button-group">
-            <button className="check-button" onClick={handleCheck}>Check</button>
+            <button
+              className="check-button"
+              onClick={handleCheck}
+              disabled={formData.noWxReport}
+            >
+            Check
+            </button>
+
             <button
               className="refresh-button"
               onClick={() => {
