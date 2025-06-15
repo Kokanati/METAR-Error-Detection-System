@@ -1,27 +1,33 @@
+// src/utils/api.js
+
 import axios from "axios";
 
-// Use the public IP or localhost during dev
-const BASE_URL = "http://65.181.10.201:8000";
+// Authentication credentials
+const apiKey = "9653a549f3f3cec";  // Replace with actual API key from Frappe user
+const apiSecret = "a1a309a562e834";  // Replace with actual API secret
 
-const apiKey = "9653a459f3f3cec";
-const apiSecret = "a1a3094a5628e34";
-
+/**
+ * Save METAR Observation to the Frappe backend via authenticated API call.
+ * Works with HTTPS and same-origin policy.
+ */
 export const saveMetarObservation = async (data) => {
   try {
     const response = await axios.post(
-      `${BASE_URL}/api/method/meds.api.save_metar_observation`,
+      "/api/method/meds.api.save_metar_observation",  // same-origin
       { payload: data },
       {
         auth: {
           username: apiKey,
-          password: apiSecret,
+          password: apiSecret
         },
         headers: {
-          "Content-Type": "application/json",
-        },
+          "Content-Type": "application/json"
+        }
       }
     );
+
     return response.data;
+
   } catch (err) {
     console.error("Save Error:", err.response?.data || err.message);
     throw err;

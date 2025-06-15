@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../../../apps/meds/meds/public/js/meds.bundle.js"],
+  "sourcesContent": ["// apps/meds/meds/public/js/meds.bundle.js\n\n// This is a minimal required content for the app to appear\n// You can add your custom JS later\nfrappe.ready(() => {\n    console.log('Meds app loaded');\n});\n\n// Required for desktop integration\nfrappe.provide('frappe.ui');\nfrappe.ui.app_icon = {\n    'meds': {\n        'icon': 'octicon octicon-pulse',\n        'color': '#FF69B4',\n        'label': 'Meds'\n    }\n};"],
+  "mappings": "MAIA,OAAO,MAAM,IAAM,CACf,QAAQ,IAAI,iBAAiB,CACjC,CAAC,EAGD,OAAO,QAAQ,WAAW,EAC1B,OAAO,GAAG,SAAW,CACjB,KAAQ,CACJ,KAAQ,wBACR,MAAS,UACT,MAAS,MACb,CACJ",
+  "names": []
+}

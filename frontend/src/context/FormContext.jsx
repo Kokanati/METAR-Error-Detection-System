@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const FormContext = createContext();
 
@@ -34,6 +34,7 @@ const initialFormData = {
     showRecentWeather: false,
     showRemarks: false,
     NoWxReport: false,
+    username: '',
 };
 
 export const FormProvider = ({ children }) => {
@@ -42,6 +43,17 @@ export const FormProvider = ({ children }) => {
     const [validatedHeader, setValidatedHeader] = useState('');
     const [errorFields, setErrorFields] = useState([]);
     const [stationError, setStationError] = useState('');
+
+    useEffect(() => {
+        fetch('/api/method/frappe.auth.get_logged_user')
+            .then(res => res.json())
+            .then(data => {
+                if (data.message) {
+                    updateField('username', data.message);
+                }
+            })
+            .catch(err => console.error("Failed to get user", err));
+    }, []);
 
 
     const updateField = (field, value) => {

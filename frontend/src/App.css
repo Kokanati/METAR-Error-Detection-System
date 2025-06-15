@@ -407,3 +407,29 @@ input[type='checkbox'] {
   box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.5);
   border-radius: 4px;
 }
+
+.welcome-banner {
+  background: linear-gradient(135deg, #2d89ef, #00b4db);
+  color: #fff;
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 0.5rem;
+  text-align: center;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.banner-content h2 {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: bold;
+}
+
+.banner-content .meds-name {
+  font-weight: 800;
+  color: #ffea00;
+}
+
+.banner-content .username {
+  font-style: italic;
+  color: #e0ffff;
+}

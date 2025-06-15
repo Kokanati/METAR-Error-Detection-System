@@ -1,6 +1,8 @@
 import React from 'react';
 import './App.css';
 
+import WelcomeBanner from './components/WelcomeBanner';
+
 import { useFormData } from './context/FormContext';
 import {
   validateWindFields,
@@ -134,7 +136,8 @@ function App() {
 
   return (
     <div className="app-container">
-      <h1 className="form-title">METAR Error Detection System</h1>
+      {/*<h1 className="form-title">METAR Error Detection System</h1>*/}
+      <WelcomeBanner />
 
       <WxHeaderForm />
 

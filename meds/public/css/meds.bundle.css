@@ -1,0 +1,10 @@
+/* apps/meds/meds/public/css/meds.bundle.css */
+
+/* Minimal required content - you can add styling later */
+.app-icon-meds {
+    background-color: #FF69B4 !important;
+}
+
+.app-icon-meds .app-icon-img {
+    color: white !important;
+}

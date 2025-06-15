@@ -120,25 +120,39 @@ const MetarActions = () => {
         if (!confirmSend) return;
 
         try {
+            const apiKey = import.meta.env.VITE_API_KEY;
+            const apiSecret = import.meta.env.VITE_API_SECRET;
+
             const response = await fetch('/api/method/meds.api.send_metar_email', {
-                method: 'POST',
+                method: "POST",
                 headers: {
-                    'Content-Type': 'application/json',
-                    'X-Frappe-CSRF-Token': window.csrf_token || ''
+                    "Content-Type": "application/json",
+                    //"X-Frappe-CSRF-Token": window.csrf_token || "",  // CSRF token from template context
+                    Authorization: `token ${apiKey}:${apiSecret}`
                 },
                 body: JSON.stringify({
                     header,
                     metar_list: metarBody,
-                    recipient_email: recipientEmail
+                    recipient_email: formData.recipientEmail
                 })
+                //credentials: "include"  // IMPORTANT: Sends cookies like 'sid'
             });
 
             const result = await response.json();
-            if (response.ok && result.message && result.message.success) {
-                alert(`✅ ${JSON.stringify(result.message.message)}`);
+
+            if (response.ok && result.message?.success) {
+                alert(`✅ ${result.message.message}`);
             } else {
-                alert(`❌ Failed to send: ${result.message?.message || 'Unknown error'}`);
+                const serverMessage =
+                    result.message?.message || 
+                    result.message || 
+                    result._server_messages || 
+                    result.exc || 
+                    'Unknown error from server.';
+    
+                alert(`❌ Failed to send METAR:\n\n${serverMessage}`);
             }
+
         } catch (error) {
             console.error('Send METAR failed:', error);
             alert('❌ Could not send METAR. Check server logs.');

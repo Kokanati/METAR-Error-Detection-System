@@ -1,4 +1,5 @@
 import frappe
+import re
 from frappe.core.doctype.communication.email import make
 
 @frappe.whitelist(allow_guest=True)
@@ -12,8 +13,11 @@ def send_metar_email():
         if not header or not metar_list or not recipient:
             return {"success": False, "message": "Missing required fields."}
 
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", recipient):
+            return {"success": False, "message": "Invalid recipient email address."}
+
         message = f"{header}\n{metar_list}"
-        html_message = message.replace ('\n', '<br>')
+        html_message = message.replace('\n', '<br>')
 
         frappe.sendmail(
             recipients=[recipient],

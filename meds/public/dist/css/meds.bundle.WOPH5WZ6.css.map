@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../../../../../../tmp/tmp-213237-2FKKNB2gv7wd/meds/meds/public/css/meds.bundle.css"],
+  "sourcesContent": ["/* apps/meds/meds/public/css/meds.bundle.css */\n\n/* Minimal required content - you can add styling later */\n.app-icon-meds {\n    background-color: #FF69B4 !important;\n}\n\n.app-icon-meds .app-icon-img {\n    color: white !important;\n}"],
+  "mappings": "AAGA,eACI,mCAGJ,6BACI",
+  "names": []
+}

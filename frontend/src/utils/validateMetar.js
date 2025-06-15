@@ -1,3 +1,4 @@
+
 // src/utils/validateMetar.js
 
 // ========== UTC TIME VALIDATION ==========
@@ -89,7 +90,6 @@ export function validateVisibilityFields(formData, setErrorFields) {
     const errorFields = [];
     const { visibility, dirVisDir, dirVisValue, cavok } = formData;
 
-    // If CAVOK, skip all visibility errors
     if (cavok) {
         if (setErrorFields) setErrorFields([]);
         return [];
@@ -103,13 +103,16 @@ export function validateVisibilityFields(formData, setErrorFields) {
         errorFields.push('visibility');
     }
 
-    // Directional visibility
     if ((dirVisDir && !dirVisValue) || (!dirVisDir && dirVisValue)) {
         errors.push('Both directional visibility and its value must be filled.');
-        errorFields.push('directional-visibility');
-    } else if (dirVisDir && dirVisValue && (!/^\d+$/.test(dirVisValue) || Number(dirVisValue) < 0 || Number(dirVisValue) > 9999)) {
-        errors.push('Directional visibility value must be between 0000 and 9999 meters.');
-        errorFields.push('directional-visibility');
+        errorFields.push('visibility');
+    } else if (
+        dirVisDir && dirVisValue &&
+        (!/^\d{4}$/.test(dirVisValue) || Number(dirVisValue) < 0 || Number(dirVisValue) > 9999 ||
+            !['N','NE','E','SE','S','SW','W','NW'].includes(dirVisDir))
+    ) {
+        errors.push('Directional visibility must be 4 digits (0000–9999) and direction must be valid (e.g., NE, SW).');
+        errorFields.push('visibility');
     }
 
     if (setErrorFields) setErrorFields(errorFields);
@@ -122,13 +125,11 @@ export function validateCloudFields(formData, setErrorFields) {
     const errorFields = [];
     const { clouds, cavok } = formData;
 
-    // If CAVOK, skip all cloud errors
     if (cavok) {
         if (setErrorFields) setErrorFields([]);
         return [];
     }
 
-    // Expect clouds to be an array with at least one valid entry
     const isValidClouds = Array.isArray(clouds) && clouds.length > 0 &&
         clouds.some(cloud => cloud && cloud.amount && cloud.height);
 
@@ -136,7 +137,6 @@ export function validateCloudFields(formData, setErrorFields) {
         errors.push('At least one cloud layer must be specified.');
         errorFields.push('cloud');
     } else {
-        // If clouds array contains CB/TCU, amount & height are required (already covered in above .some())
         for (const cloud of clouds) {
             if ((cloud.amount === 'CB' || cloud.amount === 'TCU') && (!cloud.height || cloud.height.trim() === '')) {
                 errors.push('CB/TCU clouds must have a height.');
@@ -155,13 +155,11 @@ export function validateWeatherFields(formData, setErrorFields) {
     const errorFields = [];
     const { presentWeather, visibility, cavok } = formData;
 
-    // If CAVOK, skip present weather errors
     if (cavok) {
         if (setErrorFields) setErrorFields([]);
         return [];
     }
 
-    // Require present weather if visibility is less than 1000
     if (visibility && !isNaN(Number(visibility)) && Number(visibility) < 1000) {
         if (!presentWeather || presentWeather.trim() === '') {
             errors.push('Present weather must be reported when visibility is less than 1000 meters.');
@@ -222,7 +220,6 @@ export function validateQNH(formData, setErrorFields) {
 
 // ========== DIRECTIONAL VISIBILITY VALIDATION ==========
 export function validateDirectionalVisibilityFields(formData, setErrorFields) {
-    // Alias for visibility with directional checks
     return validateVisibilityFields(formData, setErrorFields);
 }
 
@@ -230,9 +227,16 @@ export function validateDirectionalVisibilityFields(formData, setErrorFields) {
 export function validateCloudVisibilityWeather(formData, setErrorFields) {
     const errors = [];
     const errorFields = [];
-    errors.push(...validateCloudFields(formData, ef => errorFields.push(...ef)));
-    errors.push(...validateVisibilityFields(formData, ef => errorFields.push(...ef)));
-    errors.push(...validateWeatherFields(formData, ef => errorFields.push(...ef)));
+
+    const cloudErrors = validateCloudFields(formData, ef => { if (Array.isArray(ef)) errorFields.push(...ef); });
+    if (Array.isArray(cloudErrors)) errors.push(...cloudErrors);
+
+    const visErrors = validateVisibilityFields(formData, ef => { if (Array.isArray(ef)) errorFields.push(...ef); });
+    if (Array.isArray(visErrors)) errors.push(...visErrors);
+
+    const weatherErrors = validateWeatherFields(formData, ef => { if (Array.isArray(ef)) errorFields.push(...ef); });
+    if (Array.isArray(weatherErrors)) errors.push(...weatherErrors);
+
     if (setErrorFields) setErrorFields(errorFields);
     return errors;
 }
@@ -240,8 +244,13 @@ export function validateCloudVisibilityWeather(formData, setErrorFields) {
 export function validateTempDewQnhFields(formData, setErrorFields) {
     const errors = [];
     const errorFields = [];
-    errors.push(...validateTempDewPoint(formData, ef => errorFields.push(...ef)));
-    errors.push(...validateQNH(formData, ef => errorFields.push(...ef)));
+
+    const tempErrors = validateTempDewPoint(formData, ef => { if (Array.isArray(ef)) errorFields.push(...ef); });
+    if (Array.isArray(tempErrors)) errors.push(...tempErrors);
+
+    const qnhErrors = validateQNH(formData, ef => { if (Array.isArray(ef)) errorFields.push(...ef); });
+    if (Array.isArray(qnhErrors)) errors.push(...qnhErrors);
+
     if (setErrorFields) setErrorFields(errorFields);
     return errors;
 }

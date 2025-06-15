@@ -15,6 +15,7 @@ const WxCloudBlock = () => {
     const validatePresentWeather = (val) => /^(-|\+)?[A-Z]{2,6}$/.test(val);
 
     const visError = formData.visibility && !validateVisibility(formData.visibility) ? 'Visibility must be 4 digits (e.g. 9999)' : '';
+    const dirVisError = formData.showDirVis && (!/^[0-9]{4}$/.test(formData.dirVisValue) || !['N','NE','E','SE','S','SW','W','NW'].includes(formData.dirVisDir)) ? 'Directional visibility format or direction invalid' : '';
     const wxError = formData.showPresentWeather && formData.presentWeather && !validatePresentWeather(formData.presentWeather) ? 'Invalid present weather code' : '';
 
     useEffect(() => {
@@ -95,6 +96,60 @@ const WxCloudBlock = () => {
                 />
                 {visError && <div className="error-message">{visError}</div>}
             </div>
+            <div className="field-subgroup">
+                <label>
+                    <input
+                        type="checkbox"
+                        checked={formData.showDirVis}
+                        onChange={() => {
+                            const newValue = !formData.showDirVis;
+                            updateField('showDirVis', newValue);
+                            if (!newValue) {
+                                updateField('dirVisValue', '');
+                                updateField('dirVisDir', '');
+                            }
+                        }}
+                        disabled={isDisabled}
+                    />
+                    Directional Visibility
+                </label>
+            </div>
+
+            {formData.showDirVis && (
+                <div className="field-subgroup" style={{ display: 'flex', gap: '0.5rem' }}>
+                    <input
+                        type="text"
+                        value={formData.dirVisValue || ''}
+                        onChange={(e) => updateField('dirVisValue', e.target.value)}
+                        className="form-input"
+                        placeholder="e.g. 4000"
+                        maxLength={4}
+                        style={{ width: '70px' }}
+                        disabled={isDisabled}
+                    />
+                    <select
+                        value={formData.dirVisDir || ''}
+                        onChange={(e) => updateField('dirVisDir', e.target.value)}
+                        className="form-input"
+                        style={{ width: '70px' }}
+                        disabled={isDisabled}
+                    >
+                        <option value="">Dir</option>
+                        <option value="N">N</option>
+                        <option value="NE">NE</option>
+                        <option value="E">E</option>
+                        <option value="SE">SE</option>
+                        <option value="S">S</option>
+                        <option value="SW">SW</option>
+                        <option value="W">W</option>
+                        <option value="NW">NW</option>
+                    </select>
+                    {dirVisError && (
+                        <div className="error-message" style={{ marginTop: '4px' }}>{dirVisError}</div>
+                    )}
+                </div>
+            )}
+
 
             {/* Restored Present Weather field */}
             <div className="field-row">
